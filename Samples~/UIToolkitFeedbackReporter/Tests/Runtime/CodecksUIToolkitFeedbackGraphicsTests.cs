@@ -132,8 +132,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 controller.enabled = false;
                 renderer.enabled = false;
                 yield return null;
-                renderer.enabled = true;
                 controller.enabled = true;
+                renderer.enabled = true;
                 yield return null;
                 yield return null;
                 Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null);
