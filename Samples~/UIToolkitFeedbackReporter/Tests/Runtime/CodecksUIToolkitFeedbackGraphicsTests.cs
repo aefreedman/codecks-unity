@@ -89,8 +89,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 string settingsPath = AssetDatabase.FindAssets("CodecksFeedbackPanelSettings t:PanelSettings")
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Single(path => path.StartsWith("Assets/Samples/"));
-                Assert.That(AssetDatabase.CopyAsset(templatePath, temporaryTemplatePath), Is.True);
                 Assert.That(AssetDatabase.CopyAsset(templatePath.Replace(".uxml", ".uss"), temporaryStylePath), Is.True);
+                Assert.That(AssetDatabase.CopyAsset(templatePath, temporaryTemplatePath), Is.True);
 
                 var renderer = host.AddComponent<PanelRenderer>();
                 renderer.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(templatePath);
