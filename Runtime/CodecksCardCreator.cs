@@ -50,6 +50,7 @@ namespace Codecks.Runtime
         public string defaultToken;
 
         private string loadedToken;
+        private readonly HashSet<CardCreationOperation> activeOperations = new HashSet<CardCreationOperation>();
 
         public delegate void CardCreationResultDelegate(bool success, string result);
 
@@ -58,6 +59,12 @@ namespace Codecks.Runtime
             var loadedTokenFile = Resources.Load<TextAsset>("Codecks/codecksToken");
             if (loadedTokenFile != null)
                 loadedToken = loadedTokenFile.text;
+        }
+
+        private void OnDestroy()
+        {
+            foreach (var operation in activeOperations.ToArray())
+                operation.Complete(false, "Codecks report request was cancelled because its creator was destroyed.");
         }
 
         internal static string BuildCreateReportUrl(string endpoint, string token)
@@ -210,10 +217,13 @@ namespace Codecks.Runtime
         void StartNewCardRequest(string text, Dictionary<string, (byte[], CodecksFileType)> files,
             CodecksSeverity severity, string userEmail, CardCreationResultDelegate resultDelegate)
         {
+            var operation = new CardCreationOperation(this, resultDelegate);
+            activeOperations.Add(operation);
+
             string tokenToUse = string.IsNullOrEmpty(loadedToken) ? defaultToken : loadedToken;
             if (string.IsNullOrEmpty(tokenToUse))
             {
-                resultDelegate?.Invoke(false, "empty codecks token");
+                operation.Complete(false, "empty codecks token");
                 return;
             }
 
@@ -242,27 +252,27 @@ namespace Codecks.Runtime
                 request = PostRequestFactory(BuildCreateReportUrl(codecksURL, tokenToUse), json);
                 if (request == null)
                     throw new InvalidOperationException("Codecks request factory returned no request.");
+                operation.SetRequest(request);
             }
             catch (Exception)
             {
                 request?.Dispose();
-                resultDelegate?.Invoke(false, "could not prepare the Codecks report request.");
+                operation.Complete(false, "could not prepare the Codecks report request.");
                 return;
             }
 
             try
             {
-                StartCoroutine(CreateNewCardCoroutine(request, files, resultDelegate));
+                StartCoroutine(CreateNewCardCoroutine(operation, request, files));
             }
             catch (Exception)
             {
-                request.Dispose();
-                resultDelegate?.Invoke(false, "could not start the Codecks report request.");
+                operation.Complete(false, "could not start the Codecks report request.");
             }
         }
 
-        IEnumerator CreateNewCardCoroutine(UnityWebRequest request,
-            Dictionary<string, (byte[], CodecksFileType)> files, CardCreationResultDelegate resultDelegate)
+        IEnumerator CreateNewCardCoroutine(CardCreationOperation operation, UnityWebRequest request,
+            Dictionary<string, (byte[], CodecksFileType)> files)
         {
             UnityWebRequestAsyncOperation requestOperation;
             try
@@ -271,34 +281,32 @@ namespace Codecks.Runtime
             }
             catch (Exception)
             {
-                request.Dispose();
-                resultDelegate?.Invoke(false, "could not start the Codecks report request.");
+                operation.Complete(false, "could not start the Codecks report request.");
                 yield break;
             }
 
-            string responseText;
-            using (request)
+            yield return requestOperation;
+            if (operation.IsCompleted)
+                yield break;
+
+            if (request.result != UnityWebRequest.Result.Success)
             {
-                yield return requestOperation;
-
-                if (request.result != UnityWebRequest.Result.Success)
-                {
-                    resultDelegate?.Invoke(false, $"request unsuccessful: {request.result}");
-                    yield break;
-                }
-
-                responseText = request.downloadHandler.text;
+                operation.Complete(false, $"request unsuccessful: {request.result}");
+                yield break;
             }
+
+            string responseText = request.downloadHandler.text;
+            operation.DisposeRequest(request);
 
             if (!TryDeserializeCreateResponse(responseText, out CardCreateResponseData response, out string responseError))
             {
-                resultDelegate?.Invoke(false, responseError);
+                operation.Complete(false, responseError);
                 yield break;
             }
 
             if (!TryValidateCreateResponse(response, files.Keys, out var uploadResponses, out string validationError))
             {
-                resultDelegate?.Invoke(false, validationError);
+                operation.Complete(false, validationError);
                 yield break;
             }
 
@@ -317,11 +325,12 @@ namespace Codecks.Runtime
                     formData.Add(new MultipartFormFileSection("file", fileData.Item1, uploadResponse.fileName, contentType));
                     uploadRequest = UnityWebRequest.Post(uploadResponse.url, formData);
                     uploadRequest.timeout = RequestTimeoutSeconds;
+                    operation.SetRequest(uploadRequest);
                 }
                 catch (Exception)
                 {
                     uploadRequest?.Dispose();
-                    resultDelegate?.Invoke(false, "could not prepare a Codecks attachment upload.");
+                    operation.Complete(false, "could not prepare a Codecks attachment upload.");
                     yield break;
                 }
 
@@ -332,25 +341,73 @@ namespace Codecks.Runtime
                 }
                 catch (Exception)
                 {
-                    uploadRequest.Dispose();
-                    resultDelegate?.Invoke(false, "could not start a Codecks attachment upload.");
+                    operation.Complete(false, "could not start a Codecks attachment upload.");
                     yield break;
                 }
 
-                using (uploadRequest)
-                {
-                    yield return uploadOperation;
+                yield return uploadOperation;
+                if (operation.IsCompleted)
+                    yield break;
 
-                    if (uploadRequest.result != UnityWebRequest.Result.Success)
-                    {
-                        resultDelegate?.Invoke(false,
-                            $"error uploading file {uploadResponse.fileName}: {uploadRequest.result}");
-                        yield break;
-                    }
+                if (uploadRequest.result != UnityWebRequest.Result.Success)
+                {
+                    operation.Complete(false,
+                        $"error uploading file {uploadResponse.fileName}: {uploadRequest.result}");
+                    yield break;
                 }
+
+                operation.DisposeRequest(uploadRequest);
             }
 
-            resultDelegate?.Invoke(true, response.cardId);
+            operation.Complete(true, response.cardId);
+        }
+
+        private sealed class CardCreationOperation
+        {
+            private readonly CodecksCardCreator owner;
+            private readonly CardCreationResultDelegate resultDelegate;
+            private UnityWebRequest request;
+
+            public CardCreationOperation(CodecksCardCreator owner, CardCreationResultDelegate resultDelegate)
+            {
+                this.owner = owner;
+                this.resultDelegate = resultDelegate;
+            }
+
+            public bool IsCompleted { get; private set; }
+
+            public void SetRequest(UnityWebRequest newRequest)
+            {
+                request = newRequest;
+            }
+
+            public void DisposeRequest(UnityWebRequest completedRequest)
+            {
+                if (request != completedRequest)
+                    return;
+
+                request.Dispose();
+                request = null;
+            }
+
+            public void Complete(bool success, string result)
+            {
+                if (IsCompleted)
+                    return;
+
+                IsCompleted = true;
+                request?.Dispose();
+                request = null;
+                owner.activeOperations.Remove(this);
+                try
+                {
+                    resultDelegate?.Invoke(success, result);
+                }
+                catch (Exception exception)
+                {
+                    Debug.LogException(exception, owner);
+                }
+            }
         }
 
         static string GetContentType(CodecksFileType fileType)

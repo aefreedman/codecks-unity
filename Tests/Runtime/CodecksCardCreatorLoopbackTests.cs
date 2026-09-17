@@ -120,6 +120,61 @@ namespace Codecks.Tests.PlayMode
             }
         }
 
+        [UnityTest]
+        public IEnumerator CreateNewCard_DestroyedDuringCreate_CompletesOnceWithCancellation()
+        {
+            using var server = new LoopbackServer(_ => Response.Json("{\"ok\":true,\"cardId\":\"late\"}", 1000));
+            yield return DestroyDuringRequest(server, null, 1);
+        }
+
+        [UnityTest]
+        public IEnumerator CreateNewCard_DestroyedDuringUpload_CompletesOnceWithCancellation()
+        {
+            LoopbackServer server = null;
+            server = new LoopbackServer(request => request.Path == "/create"
+                ? Response.Json("{\"ok\":true,\"cardId\":\"late\",\"uploadUrls\":[{\"fileName\":\"report.txt\",\"url\":\"" + server.Url + "upload\",\"fields\":{}}]}")
+                : Response.Status(204, 1000));
+            using (server)
+            {
+                var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>
+                {
+                    ["report.txt"] = (new byte[] { 1 }, CodecksCardCreator.CodecksFileType.PlainText)
+                };
+                yield return DestroyDuringRequest(server, files, 2);
+            }
+        }
+
+        private static IEnumerator DestroyDuringRequest(LoopbackServer server,
+            Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)> files, int expectedRequestCount)
+        {
+            var host = new GameObject("Codecks destruction test");
+            var creator = host.AddComponent<CodecksCardCreator>();
+            creator.codecksURL = server.Url + "create";
+            creator.defaultToken = "loopback-token";
+            int callbackCount = 0;
+            bool success = true;
+            string result = null;
+            creator.CreateNewCard("report body is long enough", files, resultDelegate: (wasSuccessful, response) =>
+            {
+                callbackCount++;
+                success = wasSuccessful;
+                result = response;
+            });
+
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (server.Requests.Length < expectedRequestCount && Time.realtimeSinceStartup < deadline)
+                yield return null;
+
+            Assert.That(server.Requests.Length, Is.EqualTo(expectedRequestCount));
+            UnityEngine.Object.Destroy(host);
+            yield return null;
+            Assert.That(callbackCount, Is.EqualTo(1));
+            Assert.That(success, Is.False);
+            Assert.That(result, Is.EqualTo("Codecks report request was cancelled because its creator was destroyed."));
+            yield return new WaitForSecondsRealtime(1.1f);
+            Assert.That(callbackCount, Is.EqualTo(1), "A completed operation must not report a late response.");
+        }
+
         private static IEnumerator AssertFailure(LoopbackServer server,
             Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)> files, string expectedResult)
         {
@@ -242,6 +297,8 @@ namespace Codecks.Tests.PlayMode
                             var request = new Request(context.Request.Url.AbsolutePath, reader.ReadToEnd());
                             requests.Enqueue(request);
                             Response response = responder(request);
+                            if (response.DelayMilliseconds > 0)
+                                await Task.Delay(response.DelayMilliseconds, cancellation.Token);
                             context.Response.StatusCode = response.StatusCode;
                             if (response.Body != null)
                             {
@@ -274,16 +331,18 @@ namespace Codecks.Tests.PlayMode
 
         private readonly struct Response
         {
-            private Response(int statusCode, string json)
+            private Response(int statusCode, string json, int delayMilliseconds)
             {
                 StatusCode = statusCode;
                 Body = json;
+                DelayMilliseconds = delayMilliseconds;
             }
 
             public int StatusCode { get; }
             public string Body { get; }
-            public static Response Json(string body) => new Response(200, body);
-            public static Response Status(int statusCode) => new Response(statusCode, null);
+            public int DelayMilliseconds { get; }
+            public static Response Json(string body, int delayMilliseconds = 0) => new Response(200, body, delayMilliseconds);
+            public static Response Status(int statusCode, int delayMilliseconds = 0) => new Response(statusCode, null, delayMilliseconds);
         }
     }
 }

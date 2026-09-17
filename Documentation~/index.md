@@ -66,7 +66,7 @@ The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 60
 5. Convert any UI Toolkit integration to Panel Renderer plus its reload callback lifecycle; do not substitute `UIDocument` for the supplied embedding contract.
 6. Validate with a disposable report token before shipping.
 
-The existing uGUI runtime component names and script GUIDs are preserved for migration. Imported sample assets are consumer-owned and are the supported place to customize layouts and styles.
+The existing uGUI runtime component names and script GUIDs are preserved for migration. Imported sample assets are consumer-owned and are the supported place to customize layouts and styles. If a `CodecksCardCreator` is destroyed during a report or attachment upload, the request is cancelled and its callback receives one failure result; retain the component until that callback when the result is needed.
 
 ## Attribution, branding, and support
 
