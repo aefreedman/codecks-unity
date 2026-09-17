@@ -29,18 +29,28 @@ namespace Codecks.Runtime
         public string statusError;
 
         private byte[] queuedScreenshot;
+        private int session;
+        private bool submissionInFlight;
+
+        private void OnDisable()
+        {
+            InvalidateSession();
+        }
 
         /// <summary>
         /// Shows the Codecks Report Form.
         /// </summary>
         public void ShowCodecksForm()
         {
-            cardCreator.StartCoroutine(ShowCodecksFormCoroutine());
+            InvalidateSession();
+            cardCreator.StartCoroutine(ShowCodecksFormCoroutine(session));
         }
 
-        private IEnumerator ShowCodecksFormCoroutine()
+        private IEnumerator ShowCodecksFormCoroutine(int activeSession)
         {
             yield return new WaitForEndOfFrame();
+            if (!IsCurrentSession(activeSession))
+                yield break;
 
             queuedScreenshot = null;
             Texture2D screenshotTexture = null;
@@ -70,7 +80,11 @@ namespace Codecks.Runtime
                     Destroy(screenshotTexture);
             }
 
+            if (!IsCurrentSession(activeSession))
+                yield break;
+
             textArea.text = "";
+            submissionInFlight = false;
             sendButton.interactable = true;
             gameObject.SetActive(true);
         }
@@ -80,14 +94,15 @@ namespace Codecks.Runtime
         /// </summary>
         public void HideCodecksForm()
         {
-            queuedScreenshot = null;
+            InvalidateSession();
             gameObject.SetActive(false);
         }
 
-        private IEnumerator HideCodecksFormWithDelayCoroutine()
+        private IEnumerator HideCodecksFormWithDelayCoroutine(int activeSession)
         {
             yield return new WaitForSecondsRealtime(1);
-            HideCodecksForm();
+            if (IsCurrentSession(activeSession))
+                HideCodecksForm();
         }
 
         /// <summary>
@@ -95,6 +110,9 @@ namespace Codecks.Runtime
         /// </summary>
         public void OnButtonSend()
         {
+            if (submissionInFlight)
+                return;
+
             if (textArea.text.Length < 10)
             {
                 statusText.text = statusShortText;
@@ -112,6 +130,8 @@ namespace Codecks.Runtime
 #endif
             }
 
+            int activeSession = session;
+            submissionInFlight = true;
             statusText.text = statusSending;
             sendButton.interactable = false;
 
@@ -120,21 +140,38 @@ namespace Codecks.Runtime
                 files: files,
                 severity: (CodecksCardCreator.CodecksSeverity)categoryDropdown.value,
                 userEmail: emailInput.text,
-                resultDelegate: (success, result) =>
-                {
-                    if (success)
-                    {
-                        statusText.text = statusSent;
-                        sendButton.interactable = false;
-                        StartCoroutine(HideCodecksFormWithDelayCoroutine());
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"Codecks report submission failed: {result}");
-                        sendButton.interactable = true;
-                        statusText.text = statusError;
-                    }
-                });
+                resultDelegate: (success, result) => HandleSubmissionResult(activeSession, success, result));
+        }
+
+        private void HandleSubmissionResult(int activeSession, bool success, string result)
+        {
+            if (!IsCurrentSession(activeSession) || !gameObject.activeInHierarchy)
+                return;
+
+            if (success)
+            {
+                statusText.text = statusSent;
+                sendButton.interactable = false;
+                StartCoroutine(HideCodecksFormWithDelayCoroutine(activeSession));
+                return;
+            }
+
+            Debug.LogWarning($"Codecks report submission failed: {result}");
+            submissionInFlight = false;
+            sendButton.interactable = true;
+            statusText.text = statusError;
+        }
+
+        private void InvalidateSession()
+        {
+            session++;
+            submissionInFlight = false;
+            queuedScreenshot = null;
+        }
+
+        private bool IsCurrentSession(int activeSession)
+        {
+            return activeSession == session;
         }
 
         /// <summary>

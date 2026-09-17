@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Codecks.Editor;
 using Codecks.Runtime;
 using NUnit.Framework;
@@ -138,6 +139,49 @@ namespace Codecks.Tests.Editor
         }
 
         [Test]
+        public void Form_StaleSubmissionCallbacks_DoNotChangeNewSessionState()
+        {
+            var gameObject = new GameObject("Codecks form lifecycle test");
+            try
+            {
+                var form = gameObject.AddComponent<CodecksCardCreatorForm>();
+                SetPrivate(form, "session", 2);
+                SetPrivate(form, "submissionInFlight", true);
+
+                InvokePrivate(form, "HandleSubmissionResult", 1, true, "late success");
+                InvokePrivate(form, "HandleSubmissionResult", 1, false, "late failure");
+
+                Assert.That(GetPrivate<bool>(form, "submissionInFlight"), Is.True);
+                Assert.That(GetPrivate<int>(form, "session"), Is.EqualTo(2));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
+        public void Form_OnDisable_InvalidatesPendingSubmission()
+        {
+            var gameObject = new GameObject("Codecks form lifecycle test");
+            try
+            {
+                var form = gameObject.AddComponent<CodecksCardCreatorForm>();
+                SetPrivate(form, "session", 4);
+                SetPrivate(form, "submissionInFlight", true);
+
+                InvokePrivate(form, "OnDisable");
+
+                Assert.That(GetPrivate<int>(form, "session"), Is.EqualTo(5));
+                Assert.That(GetPrivate<bool>(form, "submissionInFlight"), Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
         public void CreateNewCard_EmptyTokenCompletesCallbackOnce()
         {
             var gameObject = new GameObject("Codecks reliability test");
@@ -222,6 +266,21 @@ namespace Codecks.Tests.Editor
         {
             Assert.That(CodecksTokenCreator.TryDeserializeTokenResponse("{not json", out _), Is.False);
             Assert.That(CodecksTokenCreator.TryDeserializeTokenResponse("{\"ok\":true}", out _), Is.False);
+        }
+
+        private static void SetPrivate(object target, string fieldName, object value)
+        {
+            target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
+        }
+
+        private static T GetPrivate<T>(object target, string fieldName)
+        {
+            return (T)target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
+        }
+
+        private static void InvokePrivate(object target, string methodName, params object[] arguments)
+        {
+            target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, arguments);
         }
 
         [Test]

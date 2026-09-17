@@ -52,17 +52,17 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
         private void OnUIReload(PanelRenderer renderer, VisualElement currentRoot, int version)
         {
-            if (currentRoot == null)
-            {
-                Debug.LogError("Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.", this);
-                return;
-            }
-
             if (root == currentRoot && boundVersion == version)
                 return;
 
             InvalidateSession();
             DetachBindings();
+
+            if (currentRoot == null)
+            {
+                Debug.LogError("Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.", this);
+                return;
+            }
             root = currentRoot;
             boundVersion = version;
 

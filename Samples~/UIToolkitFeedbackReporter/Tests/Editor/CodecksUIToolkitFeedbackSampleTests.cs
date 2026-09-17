@@ -61,6 +61,41 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
         }
 
         [Test]
+        public void NullRootReload_DetachesOldBindings_AndValidReloadRecovers()
+        {
+            var host = new GameObject("Codecks reload test");
+            try
+            {
+                var creator = host.AddComponent<Codecks.Runtime.CodecksCardCreator>();
+                host.AddComponent<PanelRenderer>();
+                var controller = host.AddComponent<CodecksUIToolkitFeedbackController>();
+                var oldLauncher = new Button();
+                SetPrivate(controller, "root", new VisualElement());
+                SetPrivate(controller, "launcherButton", oldLauncher);
+                SetPrivate(controller, "session", 4);
+                oldLauncher.clicked += controller.ShowCodecksForm;
+
+                InvokePrivate(controller, "OnUIReload", null, null, 5);
+
+                Assert.That(GetPrivate<object>(controller, "root"), Is.Null);
+                Assert.That(GetPrivate<object>(controller, "launcherButton"), Is.Null);
+                oldLauncher.Click();
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(5));
+
+                var validRoot = CreateRequiredRoot();
+                SetPrivate(controller, "cardCreator", creator);
+                InvokePrivate(controller, "OnUIReload", null, validRoot, 6);
+
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.SameAs(validRoot));
+                Assert.That(GetPrivate<Button>(controller, "launcherButton"), Is.Not.Null);
+            }
+            finally
+            {
+                Object.DestroyImmediate(host);
+            }
+        }
+
+        [Test]
         public void ImportedScene_HasPanelRendererAndRequiredBindings()
         {
             string scenePath = AssetDatabase.FindAssets("CodecksUIToolkitFeedbackReporterScene t:Scene")
@@ -81,6 +116,21 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             Assert.That(host.GetComponent<Codecks.Runtime.CodecksCardCreator>(), Is.Not.Null);
         }
 
+        private static VisualElement CreateRequiredRoot()
+        {
+            var root = new VisualElement();
+            var overlay = new VisualElement { name = "codecks-feedback-overlay" };
+            overlay.Add(new TextField { name = "codecks-feedback-report" });
+            overlay.Add(new DropdownField { name = "codecks-feedback-severity" });
+            overlay.Add(new TextField { name = "codecks-feedback-email" });
+            overlay.Add(new Button { name = "codecks-feedback-send" });
+            overlay.Add(new Button { name = "codecks-feedback-cancel" });
+            overlay.Add(new Label { name = "codecks-feedback-status" });
+            root.Add(new Button { name = "codecks-feedback-launcher" });
+            root.Add(overlay);
+            return root;
+        }
+
         private static void SetPrivate(object target, string fieldName, object value)
         {
             target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).SetValue(target, value);
@@ -91,9 +141,9 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             return (T)target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic).GetValue(target);
         }
 
-        private static void InvokePrivate(object target, string methodName)
+        private static void InvokePrivate(object target, string methodName, params object[] arguments)
         {
-            target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, null);
+            target.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic).Invoke(target, arguments);
         }
     }
 }
