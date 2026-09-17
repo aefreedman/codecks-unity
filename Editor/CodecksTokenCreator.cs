@@ -108,7 +108,7 @@ namespace Codecks.Editor
                     {
                         if (request.result != UnityWebRequest.Result.Success)
                         {
-                            Debug.LogWarning($"Codecks token request failed: {request.result} {request.error}");
+                            Debug.LogWarning($"Codecks token request failed: {request.result}.");
                             Complete(null);
                             return;
                         }
@@ -123,9 +123,9 @@ namespace Codecks.Editor
 
                         Complete(response.token);
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
-                        Debug.LogException(new Exception("Error reading Codecks token response", ex));
+                        Debug.LogWarning("Codecks token request returned an invalid response.");
                         Complete(null);
                     }
                     finally
@@ -134,10 +134,10 @@ namespace Codecks.Editor
                     }
                 };
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 request?.Dispose();
-                Debug.LogException(new Exception("Error starting Codecks token request", ex));
+                Debug.LogWarning("Could not start the Codecks token request.");
                 Complete(null);
             }
         }

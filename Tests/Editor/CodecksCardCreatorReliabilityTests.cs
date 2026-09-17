@@ -1,7 +1,10 @@
+using System.Collections;
 using System.Collections.Generic;
 using Codecks.Editor;
 using Codecks.Runtime;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace Codecks.Tests.Editor
 {
@@ -36,6 +39,16 @@ namespace Codecks.Tests.Editor
         }
 
         [Test]
+        public void TryDeserializeCreateResponse_RejectsMalformedJson()
+        {
+            bool success = CodecksCardCreator.TryDeserializeCreateResponse(
+                "{not json", out _, out string error);
+
+            Assert.That(success, Is.False);
+            Assert.That(error, Is.EqualTo("Codecks returned an invalid report response."));
+        }
+
+        [Test]
         public void TryValidateCreateResponse_AcceptsNoAttachmentsWithoutUploadUrls()
         {
             var response = new CardCreateResponseData { ok = true, uploadUrls = null };
@@ -46,6 +59,81 @@ namespace Codecks.Tests.Editor
             Assert.That(success, Is.True);
             Assert.That(uploads, Is.Empty);
             Assert.That(error, Is.Null);
+        }
+
+        [Test]
+        public void TryValidateCreateResponse_RejectsMissingUploadInstruction()
+        {
+            var response = new CardCreateResponseData { ok = true, uploadUrls = new CardCreateFileResponseData[0] };
+
+            bool success = CodecksCardCreator.TryValidateCreateResponse(
+                response, new List<string> { "expected.png" }, out _, out string error);
+
+            Assert.That(success, Is.False);
+            Assert.That(error, Is.EqualTo("Codecks returned an incomplete set of upload instructions."));
+        }
+
+        [Test]
+        public void TryValidateCreateResponse_RejectsDuplicateUploadInstruction()
+        {
+            var upload = new CardCreateFileResponseData
+            {
+                fileName = "expected.png",
+                url = "https://example.invalid/upload",
+                fields = new Dictionary<string, string>()
+            };
+            var response = new CardCreateResponseData { ok = true, uploadUrls = new[] { upload, upload } };
+
+            bool success = CodecksCardCreator.TryValidateCreateResponse(
+                response, new List<string> { "expected.png", "other.png" }, out _, out string error);
+
+            Assert.That(success, Is.False);
+            Assert.That(error, Is.EqualTo("Codecks returned invalid upload instructions."));
+        }
+
+        [Test]
+        public void TryValidateCreateResponse_RejectsInvalidUploadUriOrField()
+        {
+            var response = new CardCreateResponseData
+            {
+                ok = true,
+                uploadUrls = new[]
+                {
+                    new CardCreateFileResponseData
+                    {
+                        fileName = "expected.png",
+                        url = "not a uri",
+                        fields = new Dictionary<string, string> { { "key", null } }
+                    }
+                }
+            };
+
+            bool success = CodecksCardCreator.TryValidateCreateResponse(
+                response, new List<string> { "expected.png" }, out _, out string error);
+
+            Assert.That(success, Is.False);
+            Assert.That(error, Is.EqualTo("Codecks returned invalid upload instructions."));
+        }
+
+        [UnityTest]
+        public IEnumerator CreateNewCard_EmptyTokenCompletesCallbackOnce()
+        {
+            var gameObject = new GameObject("Codecks reliability test");
+            var creator = gameObject.AddComponent<CodecksCardCreator>();
+            int callbackCount = 0;
+            bool success = true;
+
+            creator.CreateNewCard("report", CodecksCardCreator.CodecksSeverity.None, null, (wasSuccessful, _) =>
+            {
+                callbackCount++;
+                success = wasSuccessful;
+            });
+
+            yield return null;
+
+            Assert.That(callbackCount, Is.EqualTo(1));
+            Assert.That(success, Is.False);
+            Object.DestroyImmediate(gameObject);
         }
 
         [Test]
