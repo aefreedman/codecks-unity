@@ -65,7 +65,7 @@ Existing runtime script GUIDs and public component names are preserved for the l
 
 - Minimum package declaration: Unity 6000.5. A clean 6000.5.5 project compiled the package and verified the uGUI/TMP sample.
 - Primary behavior checks: Unity 6000.6.0f1 has 16 runtime EditMode tests, 4 imported UI Toolkit EditMode tests, loopback UnityWebRequest create/upload PlayMode tests, and graphics-capable PlayMode form tests. The loopback endpoint is bound to localhost and uses no credentials.
-- Windows standalone IL2CPP build/run was attempted in a disposable Unity 6000.6.0f1 project, but Unity reported that the selected IL2CPP backend is not installed. Therefore no IL2CPP player support or player visual behavior is claimed.
+- Windows x86-64 standalone player validation passed on Unity 6000.6.0f1 using the Mono scripting backend. A disposable player submitted a localhost report body, high severity, email, and multipart text attachment; the player observed one callback and the endpoint observed one create request plus one upload request. This evidence covers `StandaloneWindows64` with Mono only. IL2CPP is optional and has not been validated.
 - Screenshot capture depends on a graphics-capable runtime. When it fails, reports are sent without a screenshot rather than blocking the form.
 - Destroying a `CodecksCardCreator` while a report or attachment upload is in progress cancels that operation, disposes its request, and calls its result delegate once with a failure. Keep the creator alive until its callback when the caller needs the report result.
 
