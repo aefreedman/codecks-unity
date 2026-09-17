@@ -4,6 +4,7 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
@@ -75,11 +76,12 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 SetPrivate(controller, "session", 4);
                 oldLauncher.clicked += controller.ShowCodecksForm;
 
+                LogAssert.Expect(LogType.Error, "Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.");
                 InvokePrivate(controller, "OnUIReload", null, null, 5);
 
                 Assert.That(GetPrivate<object>(controller, "root"), Is.Null);
                 Assert.That(GetPrivate<object>(controller, "launcherButton"), Is.Null);
-                oldLauncher.Click();
+                oldLauncher.SendEvent(new ClickEvent());
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(5));
 
                 var validRoot = CreateRequiredRoot();
