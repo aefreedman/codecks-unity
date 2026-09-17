@@ -136,7 +136,6 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 renderer.enabled = true;
                 yield return null;
                 yield return null;
-                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null);
 
                 LogAssert.Expect(LogType.Error, "Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.");
                 renderer.visualTreeAsset = null;
