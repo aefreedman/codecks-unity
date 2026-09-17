@@ -118,16 +118,16 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 Assert.That(newRoot, Is.Not.Null.And.Not.SameAs(oldRoot));
                 Assert.That(newLauncher, Is.Not.Null.And.Not.SameAs(oldLauncher));
                 int sessionBeforeOldClick = GetPrivate<int>(controller, "session");
-                oldLauncher.SendEvent(new ClickEvent());
+                oldLauncher.clickable.Invoke(null);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeOldClick));
 
                 int sessionBeforeNewClick = GetPrivate<int>(controller, "session");
-                newLauncher.SendEvent(new ClickEvent());
+                newLauncher.clickable.Invoke(null);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1));
-                newLauncher.SendEvent(new ClickEvent());
+                newLauncher.clickable.Invoke(null);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1),
                     "The current root must retain only one launcher binding.");
-                GetPrivate<Button>(controller, "cancelButton").SendEvent(new ClickEvent());
+                GetPrivate<Button>(controller, "cancelButton").clickable.Invoke(null);
 
                 controller.enabled = false;
                 renderer.enabled = false;
