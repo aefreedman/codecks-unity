@@ -1,9 +1,9 @@
 {
-    "name": "Codecks.Runtime.PlayMode.Tests",
-    "rootNamespace": "Codecks.Tests.PlayMode",
+    "name": "Codecks.UIToolkitFeedbackReporter.Sample.PlayMode.Tests",
+    "rootNamespace": "Codecks.Samples.UIToolkitFeedbackReporter.Tests",
     "references": [
-        "CodecksRuntime",
-        "Unity.TextMeshPro"
+        "Codecks.UIToolkitFeedbackReporter.Sample",
+        "CodecksRuntime"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

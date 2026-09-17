@@ -42,6 +42,10 @@ namespace Codecks.Runtime
         /// </summary>
         public void ShowCodecksForm()
         {
+            // A second request while visible would capture the feedback UI into its own attachment.
+            if (gameObject.activeInHierarchy)
+                return;
+
             InvalidateSession();
             cardCreator.StartCoroutine(ShowCodecksFormCoroutine(session));
         }

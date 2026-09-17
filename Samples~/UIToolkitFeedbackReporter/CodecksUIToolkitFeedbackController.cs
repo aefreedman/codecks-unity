@@ -178,7 +178,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
                 HideCodecksForm();
         }
 
-        private byte[] CaptureScreenshot()
+        /// <summary>Captures the frame before the feedback overlay becomes visible.</summary>
+        protected virtual byte[] CaptureScreenshot()
         {
             Texture2D screenshot = null;
             try
