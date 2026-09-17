@@ -34,11 +34,17 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
         private bool submissionInFlight;
         private Coroutine showCoroutine;
         private Coroutine dismissCoroutine;
+        private Coroutine bindingRecoveryCoroutine;
 
         private void OnEnable()
         {
             panelRenderer = GetComponent<PanelRenderer>();
             panelRenderer.RegisterUIReloadCallback(OnUIReload);
+
+            // A disabled Panel Renderer has no initialized root, so defer one normal
+            // callback registration until it becomes active again.
+            if (!IsPanelRendererActive())
+                bindingRecoveryCoroutine = StartCoroutine(RebindWhenRendererIsActive());
         }
 
         private void OnDisable()
@@ -50,6 +56,24 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             DetachBindings();
         }
 
+        private IEnumerator RebindWhenRendererIsActive()
+        {
+            while (isActiveAndEnabled && !IsPanelRendererActive())
+                yield return null;
+
+            bindingRecoveryCoroutine = null;
+            if (!isActiveAndEnabled || root != null || panelRenderer.visualTreeAsset == null)
+                yield break;
+
+            panelRenderer.UnregisterUIReloadCallback(OnUIReload);
+            panelRenderer.RegisterUIReloadCallback(OnUIReload);
+        }
+
+        private bool IsPanelRendererActive()
+        {
+            return panelRenderer != null && panelRenderer.enabled && panelRenderer.gameObject.activeInHierarchy;
+        }
+
         private void OnUIReload(PanelRenderer renderer, VisualElement currentRoot, int version)
         {
             if (root == currentRoot && boundVersion == version)
@@ -58,7 +82,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             InvalidateSession();
             DetachBindings();
 
-            if (currentRoot == null)
+            if (currentRoot == null || (renderer != null && renderer.visualTreeAsset == null))
             {
                 Debug.LogError("Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.", this);
                 return;
@@ -256,8 +280,11 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
                 StopCoroutine(showCoroutine);
             if (dismissCoroutine != null)
                 StopCoroutine(dismissCoroutine);
+            if (bindingRecoveryCoroutine != null)
+                StopCoroutine(bindingRecoveryCoroutine);
             showCoroutine = null;
             dismissCoroutine = null;
+            bindingRecoveryCoroutine = null;
         }
 
         private bool IsBound()

@@ -83,6 +83,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             UnityEngine.Object copiedSettings = null;
             try
             {
+                AssetDatabase.DeleteAsset(temporaryTemplatePath);
+                AssetDatabase.DeleteAsset(temporaryStylePath);
                 string templatePath = AssetDatabase.FindAssets("CodecksFeedbackReporter t:VisualTreeAsset")
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Single(path => path.StartsWith("Assets/Samples/"));
@@ -90,6 +92,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Single(path => path.StartsWith("Assets/Samples/"));
                 Assert.That(AssetDatabase.CopyAsset(templatePath.Replace(".uxml", ".uss"), temporaryStylePath), Is.True);
+                AssetDatabase.ImportAsset(temporaryStylePath, ImportAssetOptions.ForceSynchronousImport);
                 Assert.That(AssetDatabase.CopyAsset(templatePath, temporaryTemplatePath), Is.True);
 
                 var renderer = host.AddComponent<PanelRenderer>();
@@ -130,12 +133,30 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 InvokeClickable(GetPrivate<Button>(controller, "cancelButton"));
 
                 controller.enabled = false;
+                yield return null;
+                controller.enabled = true;
+                yield return null;
+                yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null,
+                    "Re-enabling only the controller must receive the initialized renderer root.");
+
+                renderer.enabled = false;
+                yield return null;
+                renderer.enabled = true;
+                yield return null;
+                yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null,
+                    "Re-enabling only the renderer must retain or rebuild controller bindings.");
+
+                controller.enabled = false;
                 renderer.enabled = false;
                 yield return null;
                 controller.enabled = true;
                 renderer.enabled = true;
                 yield return null;
                 yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null,
+                    "A controller enabled before its renderer must recover through a registered reload callback.");
 
                 LogAssert.Expect(LogType.Error, "Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.");
                 renderer.visualTreeAsset = null;
