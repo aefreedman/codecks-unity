@@ -1,7 +1,11 @@
 using System;
 using System.Collections;
+using System.Linq;
 using System.Reflection;
 using Codecks.Runtime;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -67,6 +71,87 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 UnityEngine.Object.Destroy(host);
             }
         }
+
+#if UNITY_EDITOR
+        [UnityTest]
+        public IEnumerator ImportedTemplate_PanelRendererReloadsAndDetachesOldBindings()
+        {
+            const string temporaryTemplatePath = "Assets/CodecksFeedbackReporterReloadTest.uxml";
+            var host = new GameObject("Codecks UI Toolkit reload test");
+            host.SetActive(false);
+            UnityEngine.Object copiedSettings = null;
+            try
+            {
+                string templatePath = AssetDatabase.FindAssets("CodecksFeedbackReporter t:VisualTreeAsset")
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Single(path => path.StartsWith("Assets/Samples/"));
+                string settingsPath = AssetDatabase.FindAssets("CodecksFeedbackPanelSettings t:PanelSettings")
+                    .Select(AssetDatabase.GUIDToAssetPath)
+                    .Single(path => path.StartsWith("Assets/Samples/"));
+                Assert.That(AssetDatabase.CopyAsset(templatePath, temporaryTemplatePath), Is.True);
+
+                var renderer = host.AddComponent<PanelRenderer>();
+                renderer.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(templatePath);
+                renderer.panelSettings = AssetDatabase.LoadAssetAtPath<PanelSettings>(settingsPath);
+                var creator = host.AddComponent<CodecksCardCreator>();
+                var controller = host.AddComponent<CodecksUIToolkitFeedbackController>();
+                SetPrivate(controller, "cardCreator", creator);
+                host.SetActive(true);
+                yield return null;
+                yield return null;
+
+                var oldRoot = GetPrivate<VisualElement>(controller, "root");
+                var oldLauncher = GetPrivate<Button>(controller, "launcherButton");
+                Assert.That(oldRoot, Is.Not.Null);
+                Assert.That(oldLauncher, Is.Not.Null);
+
+                copiedSettings = UnityEngine.Object.Instantiate(renderer.panelSettings);
+                renderer.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(temporaryTemplatePath);
+                renderer.panelSettings = (PanelSettings)copiedSettings;
+                yield return null;
+                yield return null;
+
+                var newRoot = GetPrivate<VisualElement>(controller, "root");
+                var newLauncher = GetPrivate<Button>(controller, "launcherButton");
+                Assert.That(newRoot, Is.Not.Null.And.Not.SameAs(oldRoot));
+                Assert.That(newLauncher, Is.Not.Null.And.Not.SameAs(oldLauncher));
+                int sessionBeforeOldClick = GetPrivate<int>(controller, "session");
+                oldLauncher.SendEvent(new ClickEvent());
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeOldClick));
+
+                newLauncher.SendEvent(new ClickEvent());
+                yield return new WaitForEndOfFrame();
+                Assert.That(GetPrivate<VisualElement>(controller, "overlay").style.display.value, Is.EqualTo(DisplayStyle.Flex));
+                GetPrivate<Button>(controller, "cancelButton").SendEvent(new ClickEvent());
+                Assert.That(GetPrivate<VisualElement>(controller, "overlay").style.display.value, Is.EqualTo(DisplayStyle.None));
+
+                controller.enabled = false;
+                renderer.enabled = false;
+                yield return null;
+                renderer.enabled = true;
+                controller.enabled = true;
+                yield return null;
+                yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null);
+
+                LogAssert.Expect(LogType.Error, "Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.");
+                renderer.visualTreeAsset = null;
+                yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Null);
+                renderer.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(temporaryTemplatePath);
+                yield return null;
+                yield return null;
+                Assert.That(GetPrivate<VisualElement>(controller, "root"), Is.Not.Null);
+            }
+            finally
+            {
+                if (copiedSettings != null)
+                    UnityEngine.Object.Destroy(copiedSettings);
+                UnityEngine.Object.Destroy(host);
+                AssetDatabase.DeleteAsset(temporaryTemplatePath);
+            }
+        }
+#endif
 
         [UnityTest]
         public IEnumerator SuccessfulSubmission_DismissesWhileTimeScaleIsPaused()

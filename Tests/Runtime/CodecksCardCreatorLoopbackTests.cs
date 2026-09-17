@@ -128,6 +128,41 @@ namespace Codecks.Tests.PlayMode
         }
 
         [UnityTest]
+        public IEnumerator CreateNewCard_DisabledDuringCreate_ContinuesToCompletion()
+        {
+            using var server = new LoopbackServer(_ => Response.Json("{\"ok\":true,\"cardId\":\"disabled\"}", 100));
+            var host = new GameObject("Codecks disable test");
+            var creator = host.AddComponent<CodecksCardCreator>();
+            creator.codecksURL = server.Url + "create";
+            creator.defaultToken = "loopback-token";
+            bool completed = false;
+            bool success = false;
+            try
+            {
+                creator.CreateNewCard("report body is long enough", CodecksCardCreator.CodecksSeverity.None, null,
+                    (wasSuccessful, _) =>
+                    {
+                        completed = true;
+                        success = wasSuccessful;
+                    });
+                while (server.Requests.Length == 0)
+                    yield return null;
+
+                creator.enabled = false;
+                float deadline = Time.realtimeSinceStartup + 10f;
+                while (!completed && Time.realtimeSinceStartup < deadline)
+                    yield return null;
+
+                Assert.That(completed, Is.True);
+                Assert.That(success, Is.True);
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(host);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator CreateNewCard_DestroyedDuringUpload_CompletesOnceWithCancellation()
         {
             LoopbackServer server = null;
