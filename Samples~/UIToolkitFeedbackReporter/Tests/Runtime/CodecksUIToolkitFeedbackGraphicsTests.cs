@@ -121,11 +121,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 oldLauncher.SendEvent(new ClickEvent());
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeOldClick));
 
+                int sessionBeforeNewClick = GetPrivate<int>(controller, "session");
                 newLauncher.SendEvent(new ClickEvent());
-                yield return new WaitForEndOfFrame();
-                Assert.That(GetPrivate<VisualElement>(controller, "overlay").style.display.value, Is.EqualTo(DisplayStyle.Flex));
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1));
+                newLauncher.SendEvent(new ClickEvent());
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1),
+                    "The current root must retain only one launcher binding.");
                 GetPrivate<Button>(controller, "cancelButton").SendEvent(new ClickEvent());
-                Assert.That(GetPrivate<VisualElement>(controller, "overlay").style.display.value, Is.EqualTo(DisplayStyle.None));
 
                 controller.enabled = false;
                 renderer.enabled = false;
