@@ -1,0 +1,67 @@
+.codecks-feedback-root {
+    flex-grow: 1;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+}
+
+.codecks-feedback-launcher, .codecks-feedback-send {
+    background-color: rgb(32, 111, 176);
+    color: white;
+}
+
+.codecks-feedback-overlay {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.55);
+    padding: 24px;
+}
+
+.codecks-feedback-dialog {
+    width: 520px;
+    max-width: 100%;
+    background-color: rgb(248, 249, 250);
+    padding: 20px;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.codecks-feedback-title {
+    font-size: 22px;
+    -unity-font-style: bold;
+    margin-bottom: 8px;
+}
+
+.codecks-feedback-help, .codecks-feedback-status, .codecks-feedback-brand {
+    white-space: normal;
+    margin-bottom: 10px;
+}
+
+.codecks-feedback-report {
+    min-height: 130px;
+}
+
+.codecks-feedback-actions {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-top: 12px;
+}
+
+.codecks-feedback-cancel {
+    margin-left: 8px;
+}
+
+.codecks-feedback-brand {
+    color: rgb(90, 90, 90);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+    margin-top: 14px;
+    margin-bottom: 0;
+}
