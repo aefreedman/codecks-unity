@@ -118,16 +118,16 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 Assert.That(newRoot, Is.Not.Null.And.Not.SameAs(oldRoot));
                 Assert.That(newLauncher, Is.Not.Null.And.Not.SameAs(oldLauncher));
                 int sessionBeforeOldClick = GetPrivate<int>(controller, "session");
-                oldLauncher.clickable.Invoke(null);
+                InvokeClickable(oldLauncher);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeOldClick));
 
                 int sessionBeforeNewClick = GetPrivate<int>(controller, "session");
-                newLauncher.clickable.Invoke(null);
+                InvokeClickable(newLauncher);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1));
-                newLauncher.clickable.Invoke(null);
+                InvokeClickable(newLauncher);
                 Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(sessionBeforeNewClick + 1),
                     "The current root must retain only one launcher binding.");
-                GetPrivate<Button>(controller, "cancelButton").clickable.Invoke(null);
+                InvokeClickable(GetPrivate<Button>(controller, "cancelButton"));
 
                 controller.enabled = false;
                 renderer.enabled = false;
@@ -184,6 +184,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 Time.timeScale = originalTimeScale;
                 UnityEngine.Object.Destroy(host);
             }
+        }
+
+        private static void InvokeClickable(Button button)
+        {
+            button.clickable.GetType()
+                .GetMethod("Invoke", BindingFlags.Instance | BindingFlags.NonPublic)
+                .Invoke(button.clickable, new object[] { null });
         }
 
         private static void Bind(CodecksUIToolkitFeedbackController controller, CodecksCardCreator creator, VisualElement root, int version)
