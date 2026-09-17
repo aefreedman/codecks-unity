@@ -1,4 +1,5 @@
-﻿using System.Collections;
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using TMPro;
@@ -26,7 +27,7 @@ namespace Codecks.Runtime
         public string statusSending;
         public string statusSent;
         public string statusError;
-        
+
         private byte[] queuedScreenshot;
 
         /// <summary>
@@ -34,54 +35,58 @@ namespace Codecks.Runtime
         /// </summary>
         public void ShowCodecksForm()
         {
-            // TODO: Implement this to show the UI
-            
             cardCreator.StartCoroutine(ShowCodecksFormCoroutine());
         }
 
-        /// <summary>
-        /// The coroutine that shows Codecks Report Form.
-        /// </summary>
         private IEnumerator ShowCodecksFormCoroutine()
         {
             yield return new WaitForEndOfFrame();
-            
-            var screenshotTex = ScreenCapture.CaptureScreenshotAsTexture();
 
+            queuedScreenshot = null;
+            Texture2D screenshotTexture = null;
+            try
+            {
+                screenshotTexture = ScreenCapture.CaptureScreenshotAsTexture();
+                if (screenshotTexture != null)
+                {
 #if UNITY_STANDALONE
-            queuedScreenshot = screenshotTex.EncodeToJPG();
+                    queuedScreenshot = screenshotTexture.EncodeToJPG();
 #else
-            // used on consoles to get screenshots easily
-            queuedScreenshot = screenshotTex.EncodeToPNG();
+                    queuedScreenshot = screenshotTexture.EncodeToPNG();
 #endif
+                }
+                else
+                {
+                    Debug.LogWarning("Codecks report form could not capture a screenshot; the report will be sent without one.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Codecks report form could not capture a screenshot: {ex.Message}. The report will be sent without one.");
+            }
+            finally
+            {
+                if (screenshotTexture != null)
+                    Destroy(screenshotTexture);
+            }
 
-            Destroy(screenshotTex);
-
-            
             textArea.text = "";
             sendButton.interactable = true;
             gameObject.SetActive(true);
         }
 
         /// <summary>
-        /// Hides the Codecks Report Form
+        /// Hides the Codecks Report Form.
         /// </summary>
         public void HideCodecksForm()
         {
-            // TODO: Implement this to hide the UI
-            
             queuedScreenshot = null;
-            
             gameObject.SetActive(false);
         }
-        
-        /// <summary>
-        /// Hides the Codecks Report Form after a short delay so that there is enough time to read the status text that
-        /// confirms sent reports.
-        /// </summary>
+
         private IEnumerator HideCodecksFormWithDelayCoroutine()
         {
-            yield return new WaitForSeconds(1);
+            yield return new WaitForSecondsRealtime(1);
             HideCodecksForm();
         }
 
@@ -95,18 +100,18 @@ namespace Codecks.Runtime
                 statusText.text = statusShortText;
                 return;
             }
-            
-            string reportText = $"{textArea.text}\n\n";
-            reportText += GetMetaText();
-            
+
+            string reportText = $"{textArea.text}\n\n{GetMetaText()}";
             var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>();
-            
+            if (queuedScreenshot != null)
+            {
 #if UNITY_STANDALONE
-            files["screenshot.jpg"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.JPG);
+                files["screenshot.jpg"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.JPG);
 #else
-            files["screenshot.png"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.PNG);
+                files["screenshot.png"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.PNG);
 #endif
-            
+            }
+
             statusText.text = statusSending;
             sendButton.interactable = false;
 
@@ -125,12 +130,13 @@ namespace Codecks.Runtime
                     }
                     else
                     {
+                        Debug.LogWarning($"Codecks report submission failed: {result}");
                         sendButton.interactable = true;
                         statusText.text = statusError;
                     }
                 });
         }
-        
+
         /// <summary>
         /// Called when the Cancel button is clicked.
         /// </summary>
@@ -140,19 +146,17 @@ namespace Codecks.Runtime
         }
 
         /// <summary>
-        /// This adds some game-related text information to the card content of the report. Feel free to add your own
-        /// game data here that you want to be able see it at a glance.
+        /// Adds game-related information to the report. Override this in a consumer-owned subclass to add metadata
+        /// without modifying the package cache.
         /// </summary>
-        private static string GetMetaText()
+        protected virtual string GetMetaText()
         {
-            StringBuilder metaText = new StringBuilder(); 
-            metaText.AppendLine($"```");
-            metaText.AppendLine($"Platform: {Application.platform.ToString()}");
+            var metaText = new StringBuilder();
+            metaText.AppendLine("```");
+            metaText.AppendLine($"Platform: {Application.platform}");
             metaText.AppendLine($"App Version: {Application.version}");
             metaText.AppendLine("```");
             return metaText.ToString();
         }
-
-        
     }
 }

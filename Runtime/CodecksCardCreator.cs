@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace Codecks.Runtime
     }
 
     [Serializable]
-    struct CardCreateResponseData
+    internal struct CardCreateResponseData
     {
         [SerializeField] public bool ok;
         [SerializeField] public string cardId;
@@ -36,10 +36,11 @@ namespace Codecks.Runtime
 
     public class CodecksCardCreator : MonoBehaviour
     {
+        internal const int RequestTimeoutSeconds = 30;
+
         void IL2CPPCompatibility()
         {
-            // to generate proper il2cpp code, generics must be called somewhere
-            // see https://docs.unity3d.com/Manual/ScriptingRestrictions.html
+            // To generate proper IL2CPP code, generics must be called somewhere.
             var dummy = new List<CardCreateFileResponseData>();
 
             throw new Exception("Never call this!");
@@ -59,15 +60,70 @@ namespace Codecks.Runtime
                 loadedToken = loadedTokenFile.text;
         }
 
+        internal static string BuildCreateReportUrl(string endpoint, string token)
+        {
+            return endpoint + "?token=" + Uri.EscapeDataString(token);
+        }
+
         static UnityWebRequest HttpPost(string url, string bodyJsonString)
         {
-            var request = new UnityWebRequest(url, "POST");
-            byte[] bodyRaw = Encoding.UTF8.GetBytes(bodyJsonString);
-            request.uploadHandler = new UploadHandlerRaw(bodyRaw);
-            request.downloadHandler = new DownloadHandlerBuffer();
+            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
+            {
+                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(bodyJsonString)),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = RequestTimeoutSeconds
+            };
             request.SetRequestHeader("Content-Type", "application/json");
-
             return request;
+        }
+
+        internal static bool TryValidateCreateResponse(
+            CardCreateResponseData response,
+            ICollection<string> requestedFileNames,
+            out CardCreateFileResponseData[] uploadResponses,
+            out string error)
+        {
+            uploadResponses = response.uploadUrls ?? Array.Empty<CardCreateFileResponseData>();
+            if (!response.ok)
+            {
+                error = "Codecks rejected the report request.";
+                return false;
+            }
+
+            if (requestedFileNames.Count == 0)
+            {
+                if (uploadResponses.Length != 0)
+                {
+                    error = "Codecks returned upload instructions when no attachments were requested.";
+                    return false;
+                }
+
+                error = null;
+                return true;
+            }
+
+            if (uploadResponses.Length != requestedFileNames.Count)
+            {
+                error = "Codecks returned an incomplete set of upload instructions.";
+                return false;
+            }
+
+            var seenFileNames = new HashSet<string>();
+            foreach (var uploadResponse in uploadResponses)
+            {
+                if (string.IsNullOrEmpty(uploadResponse.fileName) ||
+                    !requestedFileNames.Contains(uploadResponse.fileName) ||
+                    !seenFileNames.Add(uploadResponse.fileName) ||
+                    string.IsNullOrEmpty(uploadResponse.url) ||
+                    uploadResponse.fields == null)
+                {
+                    error = "Codecks returned invalid upload instructions.";
+                    return false;
+                }
+            }
+
+            error = null;
+            return true;
         }
 
         public enum CodecksFileType
@@ -87,20 +143,11 @@ namespace Codecks.Runtime
             Critical
         }
 
-        /// <summary>
-        /// Call this method to send a data request to Codecks.
-        /// </summary>
-        /// <param name="text">The text that will appear on the card.</param>
-        /// <param name="files">The files to be sent with the report (e.g. savegame).</param>
-        /// <param name="severity">The severity of the card (optional).</param>
-        /// <param name="userEmail">The email of the user to receive updates (optional)</param>
-        /// <param name="resultDelegate"></param>
-        /// <exception cref="Exception"></exception>
         public void CreateNewCard(string text, Dictionary<string, (byte[], CodecksFileType)> files = null,
             CodecksSeverity severity = CodecksSeverity.None, string userEmail = null,
             CardCreationResultDelegate resultDelegate = null)
         {
-            if (files != null && files.Any(f => f.Value.Item1 == null))
+            if (files != null && files.Any(file => file.Value.Item1 == null))
                 throw new Exception("Null file in files list");
 
             StartCoroutine(CreateNewCardCoroutine(text, files, severity, userEmail, resultDelegate));
@@ -128,9 +175,7 @@ namespace Codecks.Runtime
             UnityWebRequest request;
             try
             {
-                string url = codecksURL + "?token=" + tokenToUse;
-
-                string severityStr = severity switch
+                string severityString = severity switch
                 {
                     CodecksSeverity.Low => "low",
                     CodecksSeverity.High => "high",
@@ -138,100 +183,92 @@ namespace Codecks.Runtime
                     _ => null
                 };
 
-                CardCreateRequestData cardData = new CardCreateRequestData
+                var cardData = new CardCreateRequestData
                 {
                     content = text,
                     fileNames = files.Keys.ToList(),
-                    severity = severityStr,
+                    severity = severityString,
                     userEmail = userEmail
                 };
 
-                string json = JsonConvert.SerializeObject(cardData).Replace(
-                    ",\"severity\":null", "");
-
-                request = HttpPost(url, json);
+                string json = JsonConvert.SerializeObject(cardData).Replace(",\"severity\":null", "");
+                request = HttpPost(BuildCreateReportUrl(codecksURL, tokenToUse), json);
             }
             catch (Exception ex)
             {
-                resultDelegate?.Invoke(false, $"exception sending initial request: {ex}");
+                resultDelegate?.Invoke(false, $"exception sending initial request: {ex.Message}");
                 yield break;
             }
 
-            yield return request.SendWebRequest();
-
-            if (request.result != UnityWebRequest.Result.Success)
+            string responseText;
+            using (request)
             {
-                resultDelegate?.Invoke(false, $"request unsuccessful: {request.result}  {request.error}");
-                yield break;
+                yield return request.SendWebRequest();
+
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    resultDelegate?.Invoke(false, $"request unsuccessful: {request.result} {request.error}");
+                    yield break;
+                }
+
+                responseText = request.downloadHandler.text;
             }
 
             CardCreateResponseData response;
-            string resultString = request.downloadHandler.text;
-
             try
             {
-                response = JsonConvert.DeserializeObject<CardCreateResponseData>(resultString);
+                response = JsonConvert.DeserializeObject<CardCreateResponseData>(responseText);
             }
             catch (Exception ex)
             {
-                resultDelegate?.Invoke(false, $"exception deserializing response: {ex}");
+                resultDelegate?.Invoke(false, $"exception deserializing response: {ex.Message}");
                 yield break;
             }
 
-            if (!response.ok)
+            if (!TryValidateCreateResponse(response, files.Keys, out var uploadResponses, out string validationError))
             {
-                resultDelegate?.Invoke(true, $"Codecks OK = false {resultString}");
+                resultDelegate?.Invoke(false, validationError);
                 yield break;
             }
 
-            foreach (var uploadUrl in response.uploadUrls)
+            foreach (var uploadResponse in uploadResponses)
             {
-                if (!files.ContainsKey(uploadUrl.fileName))
-                    throw new Exception($"Unexpected file in uploadUrls {uploadUrl.fileName}");
-
-                List<IMultipartFormSection> formData = new List<IMultipartFormSection>();
-                foreach (var field in uploadUrl.fields)
-                {
+                var formData = new List<IMultipartFormSection>();
+                foreach (var field in uploadResponse.fields)
                     formData.Add(new MultipartFormDataSection(field.Key, field.Value));
-                }
 
-                var fileData = files[uploadUrl.fileName];
-                string contentType;
-                switch (fileData.Item2)
-                {
-                    default:
-                        contentType = "application/octet-stream";
-                        break;
-                    case CodecksFileType.PlainText:
-                        contentType = "text/plain";
-                        break;
-                    case CodecksFileType.JSON:
-                        contentType = "application/json";
-                        break;
-                    case CodecksFileType.PNG:
-                        contentType = "image/png";
-                        break;
-                    case CodecksFileType.JPG:
-                        contentType = "image/jpeg";
-                        break;
-                }
-
+                var fileData = files[uploadResponse.fileName];
+                string contentType = GetContentType(fileData.Item2);
                 formData.Add(new MultipartFormDataSection("Content-Type", contentType));
-                formData.Add(new MultipartFormFileSection("file", fileData.Item1, uploadUrl.fileName, contentType));
+                formData.Add(new MultipartFormFileSection("file", fileData.Item1, uploadResponse.fileName, contentType));
 
-                UnityWebRequest uploadRequest = UnityWebRequest.Post(uploadUrl.url, formData);
-                yield return uploadRequest.SendWebRequest();
-
-                if (uploadRequest.result != UnityWebRequest.Result.Success)
+                using (UnityWebRequest uploadRequest = UnityWebRequest.Post(uploadResponse.url, formData))
                 {
-                    resultDelegate?.Invoke(false, $"Error uploading file {uploadUrl.fileName} to {uploadUrl.url}" +
-                        $" with {fileData.Item1.Length} bytes: {uploadRequest.error}");
+                    uploadRequest.timeout = RequestTimeoutSeconds;
+                    yield return uploadRequest.SendWebRequest();
 
-                    yield break;
+                    if (uploadRequest.result != UnityWebRequest.Result.Success)
+                    {
+                        resultDelegate?.Invoke(false,
+                            $"error uploading file {uploadResponse.fileName}: {uploadRequest.result} {uploadRequest.error}");
+                        yield break;
+                    }
                 }
             }
 
             resultDelegate?.Invoke(true, response.cardId);
+        }
+
+        static string GetContentType(CodecksFileType fileType)
+        {
+            return fileType switch
+            {
+                CodecksFileType.PlainText => "text/plain",
+                CodecksFileType.JSON => "application/json",
+                CodecksFileType.PNG => "image/png",
+                CodecksFileType.JPG => "image/jpeg",
+                _ => "application/octet-stream"
+            };
         }
     }
 }
