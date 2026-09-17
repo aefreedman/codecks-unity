@@ -1,43 +1,79 @@
 # Codecks Bug & Feedback Reporter for Unity
 
-Collect bugs and feedback right from your Unity game and keep players in the loop what happens with their feedback.
+An independently maintained UPM fork of the [Codecks Unity plugin](https://github.com/codecks-io/codecks-unity), originally developed by Codecks GmbH and released under the [MIT license](LICENSE.md). This fork is not affiliated with or endorsed by Codecks GmbH.
 
-This is an independently maintained fork of the original Codecks Unity plugin. It is not affiliated with or endorsed by Codecks GmbH.
+This package provides uGUI and runtime UI Toolkit feedback forms backed by `CodecksCardCreator`. It targets Unity 6000.5 or later. Read the [consumer manual](Documentation~/index.md) and [changelog](CHANGELOG.md). Fork-specific support belongs in this repository's [issue tracker](https://github.com/aefreedman/codecks-unity/issues), not Codecks support.
 
-## Documentation
+## Install
 
-Package documentation is available in [Documentation~](./Documentation~/index.md). The original Codecks user-report documentation remains available at the [Codecks Manual Page](https://manual.codecks.io/user-reports/).
+1. Ensure Git is installed and available on the machine that resolves Unity packages.
+2. In Unity, open **Window > Package Manager**, select **Add package from git URL**, and enter:
 
+   ```text
+   https://github.com/aefreedman/codecks-unity.git
+   ```
 
-## Set up
+3. Open the package's **Samples** tab and import one or both samples:
+   - **Feedback Reporter (uGUI)** for the existing Canvas/TMP implementation.
+   - **Feedback Reporter (UI Toolkit)** for the Panel Renderer implementation.
 
-Install this repository as a UPM package, then import the **Feedback Reporter (uGUI)** sample from Package Manager. The imported sample contains `CodecksSampleScene` with the default layout and setup. Its required Unity UI and TextMesh Pro dependencies are declared by the package.
+The package is currently `0.1.0-pre.1`; no release tag has been approved. Do not treat an untagged branch URL as a stable release. After release approval and publication, install the approved pinned tag using the form `https://github.com/aefreedman/codecks-unity.git#v<package-version>`.
 
-## Getting started
+## Choose an implementation
 
-The sample scene already provides all the UI elements and component setup for you to get started right away. You can test the initial setup of the report tool right from the sample scene by entering your created report token (the one that you created in your Codecks User Report settings screen) into the `Default Token` property of the `CodecksCardCreator` component on the `CardCreator` scene object (found under the `Canvas` object). Once you've done that you can hit _Play_. Click the "Give Feedback!" button, fill out the form and press "Send report". If everything works, you should see a card pop up in your Codecks just moments later. In case of issues, an error message should be printed to your screen and console.
+### uGUI
 
-## Adapting it to your own needs
+The uGUI sample contains `CodecksSampleScene`, a Canvas form, and TextMesh Pro fields. After importing it, assign a report token to `Canvas/CardCreator > CodecksCardCreator > Default Token`. If TMP text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**; the sample uses TMP's standard Liberation Sans asset.
 
-After testing the initial setup, we recommend copying or integrating the sample scene into your own UI game scene where you can configure it to show up when pressing a hotkey or by selecting a menu entry according to your own needs. You may also modify the layout to fit your game thematically or use the Codecks default layout as provided. In any case please make sure to not hide the `Powered by Codecks` sprite and display it next to the report form.
+The sample EventSystem uses `StandaloneInputModule`, suitable for the legacy Input Manager or **Active Input Handling: Both**. In a new-Input-System-only project, replace it with `InputSystemUIInputModule`, configure that module's UI actions, and do not enable both modules on one EventSystem. See the [uGUI sample guide](Samples~/FeedbackReporter/README.md) for metadata customization and setup details.
 
-Here's an explanation what the two provided MonoBehavior classes do:
+### UI Toolkit
 
-- **CodecksCardCreator** handles the basic API communication with Codecks for the purpose of creating cards inside your Codecks project. This class does not handle any UI related tasks and contains only the basic functionality.
-- **CodecksCardCreatorForm** is a helper class that manages the UI and forwards the input to the `CodecksCardCreator` class. You may write your own UI handling in case you're not using the default Unity Canvas system or in case you have special requirements for your UI. The class provides a method `GetMetaText` which you can edit to add your own game related meta data. By default the component also creates a screenshot and attaches it to the request sent to the `CodecksCardCreator` class. You may choose to add additional files to the request (e.g. attaching a savegame or world state dump).
+The UI Toolkit sample contains `CodecksUIToolkitFeedbackReporterScene`. Its form uses a **Panel Renderer**, not `UIDocument`; assign its Visual Tree Asset (UXML) and Panel Settings, then keep `CodecksCardCreator` and `CodecksUIToolkitFeedbackController` on the same GameObject. The supplied Panel Settings references a sample-owned runtime theme, so it does not rely on project UI Toolkit assets.
 
-## License
+For embedding, copy the sample UXML, USS, controller, and branding into `Assets` before editing. Keep the controller's required named elements, use explicit Panel Renderer sort orders when sharing Panel Settings, and retain the reload callback lifecycle so bindings are rebuilt after the source asset or Panel Settings changes. The supplied controller focuses the report field when opening. See the [UI Toolkit sample guide](Samples~/UIToolkitFeedbackReporter/README.md) for required names, styling hooks, and metadata customization.
 
-The code is licensed under the MIT license. See [`LICENSE.md`](./LICENSE.md).
+## Tokens and report data
 
-## Contribute
+A **report token** may be embedded in a player build. Set it in `CodecksCardCreator.defaultToken`, or create `Resources/Codecks/codecksToken.txt`; the resource token takes precedence. Keep report tokens scoped and revocable, configure upload limits in Codecks, and do not commit tokens to source control.
 
-### Docs
+An **access key** is more sensitive: keep it out of builds and source control. `CodecksTokenCreator.CreateAndSetNewToken` is for a trusted editor or build pipeline and writes a report token resource; wait for its callback before continuing a build. This package does not provide a secure secret store.
 
-The sources for the docs can be found in [`Documentation~/index.md`](./Documentation~/index.md).
+Reports can include optional severity, email, metadata, and a screenshot attachment. The standard forms wait until the end of the current frame before capture so the overlay is not included. If screenshot capture is unavailable, they warn and submit without an attachment. The forms require at least ten report characters and surface retryable submission failures to the user.
 
-To create a PDF you need node v14+ installed on your machine. Run this command from [`Documentation~`](./Documentation~/):
+## Customize safely
 
-```sh
-cat ./index.md | npx md-to-pdf > ./Codecks\ Unity\ Plugin\ Manual.pdf
-```
+Do not edit files in PackageCache. Import a sample, copy the consumer-owned UI assets/scripts into `Assets`, and subclass the provided component for project data:
+
+- Override `CodecksCardCreatorForm.GetMetaText()` for uGUI.
+- Override `CodecksUIToolkitFeedbackController.GetMetadata()` for UI Toolkit.
+
+`CodecksCardCreator.CreateNewCard` is also available for a completely custom UI. Preserve the public component names, serialized references, and callback behavior when migrating an existing integration.
+
+## Migration from the old folder install
+
+1. Back up project-owned customizations and revoke any token that was committed or shared unintentionally.
+2. Remove the old copied plugin folder only after its scenes, prefabs, and scripts have been migrated; do not delete assets still referenced by your project.
+3. Install this package through Package Manager and import the matching sample.
+4. Reattach existing `CodecksCardCreator` and `CodecksCardCreatorForm` references where appropriate, then move custom subclasses and UI assets into `Assets`.
+5. For a UI Toolkit integration, replace `UIDocument`-based assumptions with a Panel Renderer and its reload callback lifecycle.
+6. Test report submission with a disposable token before releasing a player build.
+
+Existing runtime script GUIDs and public component names are preserved for the legacy uGUI integration, but sample assets are imported into the consumer project and should be treated as the new customization point.
+
+## Tested support and current limits
+
+- Minimum package declaration: Unity 6000.5. A clean 6000.5.5 project compiled the package and verified the uGUI/TMP sample.
+- Primary behavior checks: Unity 6000.6.0f1 EditMode checks verified runtime request behavior and both samples imported through Package Manager.
+- Not yet release-validated: graphics-capable player visual checks, standalone IL2CPP player build/run, and a live Codecks submission using a disposable token.
+- Screenshot capture depends on a graphics-capable runtime. When it fails, reports are sent without a screenshot rather than blocking the form.
+
+## Attribution, branding, and license
+
+The retained [MIT license](LICENSE.md) preserves Codecks GmbH's original copyright notice. The original repository is [codecks-io/codecks-unity](https://github.com/codecks-io/codecks-unity); this fork adds UPM packaging, reliability work, and the UI Toolkit sample.
+
+The included Codecks naming and visual assets originate in the upstream plugin. MIT licensing covers the software and documentation, but it is not a trademark or logo license. A review of Codecks' published Terms of Service found no separate public brand-use grant; those terms require users to be entitled to use trademark-protected content. Confirm the necessary permission before redistributing modified branding or implying Codecks endorsement.
+
+## Release policy
+
+Versions remain prereleases until the release gates above, branch-install verification, branding permission review, and publication approval are complete. A release tag must match `package.json`; creating tags, pushing, and publishing are intentionally not performed by this package.

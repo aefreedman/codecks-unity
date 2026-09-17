@@ -1,203 +1,79 @@
----
-stylesheet: https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.10.0/github-markdown.min.css
-body_class: markdown-body
-css: |-
-  .page-break { page-break-after: always; }
-  .markdown-body { font-size: 11px; }
-  .markdown-body pre > code { white-space: pre-wrap; }
----
+# Codecks Bug & Feedback Reporter for Unity
 
-Codecks Unity Bugs & Feedback Reporter
-======================================
+An independently maintained UPM fork of the [Codecks Unity plugin](https://github.com/codecks-io/codecks-unity), originally developed by Codecks GmbH and released under the [MIT license](../LICENSE.md). This fork is not affiliated with or endorsed by Codecks GmbH.
 
-Thanks for downloading our plugin. The plugin allows you to collect bug and feedback reports right from a easy-to-use form within your game. You can track all the received information using our Codecks platform.
+This Markdown manual is the maintained consumer documentation. The former PDF is not a supported release artifact.
 
-Users also have the option to leave their email which you can use to send them follow-up questions. They will also automatically be notified via e-mail when their card is set to done in Codecks, showing them that they’re feedback is actually being processed and potentially motivating them to return to your game and leave even more feedback. It’s a win-win situation!
+## Install through Package Manager
 
-![](./images/codecks-hand-screen.png)
+The package requires Unity 6000.5 or later and Git on the machine that resolves packages.
 
-Unity Plugin
-============
+1. Open **Window > Package Manager**.
+2. Select **Add package from git URL**.
+3. Enter `https://github.com/aefreedman/codecks-unity.git`.
+4. Select the package, open **Samples**, and import the implementation you need.
 
-After importing the plugin you will find the plugin in the folder `Assets/Codecks_io/Codecks Bugs & Feedback Reporter`. You can find a scene named `CodecksSampleScene` that contains a default layout and sample setup for you to check out.
+The package is currently prerelease (`0.1.0-pre.1`) and does not have an approved release tag. After a tag is approved and published, use `https://github.com/aefreedman/codecks-unity.git#v<package-version>` to pin a release. Do not use an untagged branch as a stable dependency.
 
-The sample scene already provides all the UI elements and component setup for you to get started right away. You can test the initial setup of the report tool right from the sample scene by entering your created report token (the one that you created in your Codecks User Report settings screen) into the Default Token property of the `CodecksCardCreator` component on the `CardCreator` scene object (found under the Canvas object). Once you’ve done that you can hit Play. Click the “Give Feedback!” button, fill out the form and press “Send report”. If everything works you should see a card pop-up in your Codecks just moments later. In case of issues, an error message should be printed to your screen and console.
+## Samples
 
-After testing the initial setup, we recommend copying or integrating the sample scene into your own UI game scene, where you can hook it to show up when pressing a hotkey or by selecting a menu entry according to your own needs. You may also modify the layout to fit your game thematically or use the Codecks default layout as provided. In any case please make sure to not hide the Powered by Codecks sprite and display it next to the report form.
+### Feedback Reporter (uGUI)
 
-Here’s an explanation what the two provided `MonoBehavior` classes do:
+Import **Feedback Reporter (uGUI)**, then open `CodecksSampleScene`. It uses Canvas, the existing `CodecksCardCreatorForm`, and TextMesh Pro. Set `Canvas/CardCreator > CodecksCardCreator > Default Token` to a report token before entering Play mode.
 
-* `CodecksCardCreator` handles the basic API communication with Codecks for the purpose of creating cards inside your Codecks project. This class does not handle any UI related tasks and contains only the basic functionality.
-* `CodecksCardCreatorForm` is a helper class that manages the UI and forwards the input to the `CodecksCardCreator` class. You may write your own UI handling in case you’re not using the default Unity Canvas system or in case you have special requirements for your UI. The class provides a method `GetMetaText` which you can edit to add your own game related meta data. By default the component also creates a screenshot and attaches it to the request sent to the `CodecksCardCreator` class. You may choose to add additional files to the request (e.g. attaching a savegame or world state dump).
+If text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**. The sample uses the standard TMP Liberation Sans font asset. Its EventSystem uses `StandaloneInputModule`, which supports the legacy Input Manager or **Active Input Handling: Both**. New-Input-System-only projects must replace that module with `InputSystemUIInputModule`, configure its UI actions, and keep only one input module enabled.
 
-If you want to generate a new token for each build you distribute, you can integrate the `CodecksTokenCreator` class into your build scripts. Simply call `CodecksTokenCreator.CreateAndSetNewToken` and wait for the callback before your call to `BuildPipeline.BuildPlayer`. This will request a token and store it in your build (in the Resources folder). The `CodecksCardCreator` will check for this created token on startup and use it instead of the default token if present.
+Subclass `CodecksCardCreatorForm` in `Assets` and override `GetMetaText()` to append project metadata without editing PackageCache. Preserve the serialized UI references when replacing the form component.
 
-Alternatively, call `CodecksTokenCreator.CreateNewToken` to just get a new token and do what you want with it!
+### Feedback Reporter (UI Toolkit)
 
-Note that because of how unity hands http requests async, your batchmode scripts will need to run without `-quit` in the commandline, and instead need to call `EditorApplication.Exit` manually.
+Import **Feedback Reporter (UI Toolkit)**, then open `CodecksUIToolkitFeedbackReporterScene`. It needs no TMP resources or EventSystem. The form is a runtime UI Toolkit integration built on **Panel Renderer**, not `UIDocument`.
 
-User Reports
-============
+The sample GameObject has a Panel Renderer, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController`. Its Panel Renderer uses `CodecksFeedbackReporter.uxml` as the Visual Tree Asset and `CodecksFeedbackPanelSettings` as Panel Settings. The supplied Panel Settings references a sample-owned runtime theme.
 
-User Reports allow your users to send feedback directly from within your application. Each feedback will result in a new Codecks card in the deck(s) of your choice. You can use either directly talk to our API endpoint or use our ready-made Unity integration to talk to our Codecks server.
+To embed the form in a project:
 
-Set up your first application
------------------------------
+1. Copy the UXML, USS, controller, and branding asset from the imported sample into `Assets`.
+2. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject.
+3. Assign the copied Visual Tree Asset and Panel Settings to the Panel Renderer, and the same `CodecksCardCreator` to the controller.
+4. Preserve the required UXML element names: `codecks-feedback-launcher`, `codecks-feedback-overlay`, `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`, `codecks-feedback-send`, `codecks-feedback-cancel`, and `codecks-feedback-status`.
+5. Restyle the `codecks-feedback-*` classes in the copied USS. When several Panel Renderers share Panel Settings, choose explicit sort orders. The supplied controller focuses the report field on open.
 
-As a first step you need to open up your Organization Settings and look for the User Report section. You’ll get to chose between the Unity integration and creating reports via the API. Changes in either section will be reflected in the other (i.e. keys created in the via API section can be used in the Unity integration and vice versa).
+The controller registers a Panel Renderer reload callback and rebuilds bindings when its UI reloads. Keep that lifecycle if changing the source asset or Panel Settings. Add project metadata in a consumer-owned subclass by overriding `GetMetadata()`.
 
-Whichever option you’ve picked, you will be asked to add your first application. You need to enter the name and the target deck in which cards shall be added by default. Both options can be changed later on. Once submitted you’ll receive two keys: a Report Tokenand an Access Key. Let’s have a look at those two.
+## Tokens, privacy, and security
 
-### Report Token
+A report token can be embedded in a player build. Set `CodecksCardCreator.defaultToken`, or provide `Resources/Codecks/codecksToken.txt`; the resource token wins when both exist. Do not commit report tokens, and revoke a token if it is exposed.
 
-Report Tokens are meant to be embedded within your application. They allow you to create a card according to the options passed to the endpoint and according to the rules you’ve set up in the settings. Report Tokens can be disabled to prevent more reports from coming in. This can be helpful if one token has gone “rogue”. You can re-enable a disabled token anytime.
+An access key must never ship in a player or source repository. Use `CodecksTokenCreator.CreateAndSetNewToken` only from a trusted editor or build process, wait for its callback, and protect the access key with the build system's secret handling. The package has no secure secret-storage facility.
 
-A application can have multiple Report Tokens, each with a unique label. This is meant to differentiate feedback coming from different builds.
+Reports may send a description, optional severity, optional email, platform/app-version metadata, and a screenshot. Configure report-token upload limits in Codecks. Obtain consent and apply your own privacy policy before collecting player email addresses, screenshots, or other personal/project data.
 
-By default Codecks creates a Report Token with a Defaultlabel for you. To create new Report Tokens you need to use another API endpoint along with an Access Key.
+## Runtime behavior and platform limits
 
-### Access Key
+Both supplied forms require at least ten report characters. They capture a screenshot at the end of the current frame before showing the overlay; this avoids capturing the form itself. Screenshot capture needs a graphics-capable runtime. On capture failure, the form logs a warning and sends the report without an attachment.
 
-Access Keys are more security sensitive and should not end up in your builds. They are meant to be used within your build process though. Whenever you are about to release a new version, you can use the Access Key to create a new Report Token with a version-specific label. The label will be used as a tag in generated cards and thus allows you to quickly filter and sort your reports.
+The request path uses UnityWebRequest and supports report creation plus server-provided attachment uploads. Failed requests leave the form available for a retry. The uGUI form uses JPG attachments on standalone builds and PNG elsewhere; the UI Toolkit form follows the same policy.
 
-An Access Key is automatically generated when adding a new application in the settings. You won’t be able to see that key again within Codecks. In case you have lost it, you are able to regenerate a new one. This will invalidate the old Access Key however.
+The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 6000.6.0f1 EditMode. A graphics-capable player visual check, standalone IL2CPP build/run, and a disposable-token live submission remain release gates; do not infer support for untested player platforms from the editor checks.
 
-Codecks Settings
-----------------
+## Migrate from a copied plugin folder
 
-Here's a tour of all options available in the settings screen:
+1. Back up project-specific forms, subclasses, and UI assets; revoke accidentally exposed credentials.
+2. Identify scenes, prefabs, and scripts that reference the old copied plugin before removing it.
+3. Install this UPM package and import the appropriate sample through Package Manager.
+4. Move custom code and UI assets into `Assets`, reattach references, and use the protected metadata hooks rather than modifying PackageCache.
+5. Convert any UI Toolkit integration to Panel Renderer plus its reload callback lifecycle; do not substitute `UIDocument` for the supplied embedding contract.
+6. Validate with a disposable report token before shipping.
 
-- **Report Tokens**
+The existing uGUI runtime component names and script GUIDs are preserved for migration. Imported sample assets are consumer-owned and are the supported place to customize layouts and styles.
 
-  This tab presents you an overview of all created Report Tokens for your application. It allows you to disable or re-enable specific tokens. Disabling a Report Token will prevent any feedback using this token from creating a card. This list also shows the token itself, label, creation date and the number of created cards.
+## Attribution, branding, and support
 
-- **Update Settings**
+The [MIT license](../LICENSE.md) retains the original Codecks GmbH copyright notice. This fork's support channel is its [issue tracker](https://github.com/aefreedman/codecks-unity/issues); Codecks GmbH does not support or endorse this fork.
 
-  This screens allows you to change these settings:
+The upstream plugin supplied the bundled Codecks naming and visual assets. The MIT license does not itself grant trademark or logo rights. Codecks' published Terms of Service require entitlement to use trademark-protected content, and no separate public brand-use permission was identified during release preparation. Obtain permission before changing or redistributing branding in a way that requires it, and do not claim Codecks endorsement.
 
-  - **Name of Application:** The name is used in the select box on the top right as well as in emails sent to feedback reporters (see below)
-  - **Maximum Upload Size:** As Report Tokens are part of your builds they can theoretically be extracted and used for malicious activites. To prevent user reports from quickly filling up your storage quota, you can configure a limit here.
-  - **Map Severity to Deck:** feedback reports can set a **severity** value. Each severity can be mapped to a different deck allowing e.g more severe issues to be put into a dedicated deck.
-  - **Map Severity to Priority:** You can also use priority as a signal for severity.
+## Release policy
 
-- **New Access Key**
-
-  In case you either lost your current Access Key or you want to invalidate it, this section allows you to create a new Access Key. Make sure to copy it somewhere safe as it won't be shown again after it has been generated.
-
-- **Delete Application**
-
-  This tab allows to remove the application from the User Report integration. Any Access Key or Report Token will be deleted and no more emails will be sent out to feedback reporters. Applications calling the endpoint with a deleted token will receive a `401 unauthorized` response.
-
-### Multi-Application support
-
-In case you're working on multiple games or apps, you can add another application to this integration. Look for the `+` icon next to the application selector in the top right of the settings screen.
-
-Automatic email updates to feedback reporters
----------------------------------------------
-
-When submitting feedback to Codecks, you can provide an optional `userEmail` field. This field will be used to send an email to the provided address once the associated card is set to done. Theses types of email will be sent once a day and batch all done cards for any given email address. The email will contain the name of the application as well as the current card title and a link to it. The link of the card is a smart link and has three modes:
-
-- if the current user is a member of the organization, the smart link will open the card within the organization
-- if the card is within a public open deck, the card will be opened in this context
-- if neither is true, the link will render a card which only displays the title of the card.
-
-API
----
-
-In case you want to setup your own engine integration or want to understand how the Unity plugin works exactly, we will describe how the API endpoints work exactly:
-
-### Create a report
-
-To create a card issue a `POST` message in the following form:
-
-`POST https://api.codecks.io/user-report/v1/create-report?token=[REPORT_TOKEN]`
-
-#### Body
-
-The body of the message has to be a JSON object of this form:
-
-    {
-      "content": "text content of your report\n\nthe first line will be treated as the title.",
-      "severity": "high",
-      "fileNames": [
-        "logs.txt",
-        "screenshot-1.png"
-      ],
-      "userEmail": "user@example.com"
-    }
-
-Note that `severity`, `fileNames`, `userEmail` are optional. `severity` can be either `"critical"`, `"high"`, `"low"` or `null`. If a `userEmail` is provided, that user will receive an email once their report is marked as done.
-
-#### Curl example
-
-Here is an example of how to issue the message via `curl`:
-
-    curl 'https://api.codecks.io/user-report/v1/create-report?token=[REPORT_TOKEN]' \
-      -H 'Content-Type: application/json' \
-      --data-binary '{"content":"report content", "fileNames": ["logs.txt"]}'
-
-#### Response
-
-The response object for this endpoint has this form:
-
-    {
-      "ok": true,
-      "cardId": "[CARD_ID]",
-      "uploadUrls": [
-        {
-          "fileName": "logs.txt",
-          "url": "https://[UPLOAD_URL]",
-          "fields": {
-            "key1": "[VALUE1]",
-            "key2": "[VALUE2]"
-          }
-        },
-        {
-          "fileName": "screenshot-1.png",
-          "url": "https://[UPLOAD_URL]",
-          "fields": {
-            "key1": "[VALUE1]",
-            "key2": "[VALUE2]"
-          }
-        }
-      ]
-    }
-
-#### Uploading files
-
-You'll receive an entry in the `uploadUrls` list for each file name you specified in `fileNames`. This contains a signed URL that allows you to directly upload the files to the respective Codecks S3 bucket.
-
-This means we're relying on [AWS Api](https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-HTTPPOSTConstructPolicy.html) here which unfortunately is a bit more involved.
-
-For each file you need to create a `POST` request to the specified `url`. The payload is _not_ JSON-based but is `multipart/form-data` encoded. We strongly encourage you to use a http library of your choice to construct the request. The `FormData` contains all the listed `fields` as well as an additional field called `file` containing the binary contents of your file and another field `Content-Type` containing the mime-type of the file (e.g. `text/plain` or `image/png`).
-
-### Create a new Report Token
-
-To create a new report token issue a `POST` of this form:
-
-`POST https://api.codecks.io/user-report/v1/create-report-token?accessKey=[ACCESS_KEY]`
-
-#### Body
-
-The body of the message has to be a JSON object of this shape:
-
-    {
-      "label": "string describing your version"
-    }
-
-#### Curl example
-
-Here is a `curl` example using this endpoint:
-
-    curl 'https://api.codecks.io/user-report/v1/create-report-token?accessKey=[ACCESS_KEY]' \
-      -H 'Content-Type: application/json' \
-      --data-binary '{"label":"v0.2.1"}'
-
-#### Response
-
-The response is expected to be of this form:
-
-    {
-      "ok": true,
-      "token": "[TOKEN]"
-    }
+The version remains prerelease until clean branch-install verification, player validation, disposable-token live submission validation, branding permission review, and publication approval are complete. A future tag must match `package.json`. This documentation does not authorize tagging, pushing, or publishing.
