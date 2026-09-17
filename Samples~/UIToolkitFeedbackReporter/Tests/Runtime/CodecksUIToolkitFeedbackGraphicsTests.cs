@@ -77,6 +77,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
         public IEnumerator ImportedTemplate_PanelRendererReloadsAndDetachesOldBindings()
         {
             const string temporaryTemplatePath = "Assets/CodecksFeedbackReporterReloadTest.uxml";
+            const string temporaryStylePath = "Assets/CodecksFeedbackReporter.uss";
             var host = new GameObject("Codecks UI Toolkit reload test");
             host.SetActive(false);
             UnityEngine.Object copiedSettings = null;
@@ -89,6 +90,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                     .Select(AssetDatabase.GUIDToAssetPath)
                     .Single(path => path.StartsWith("Assets/Samples/"));
                 Assert.That(AssetDatabase.CopyAsset(templatePath, temporaryTemplatePath), Is.True);
+                Assert.That(AssetDatabase.CopyAsset(templatePath.Replace(".uxml", ".uss"), temporaryStylePath), Is.True);
 
                 var renderer = host.AddComponent<PanelRenderer>();
                 renderer.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(templatePath);
@@ -149,6 +151,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                     UnityEngine.Object.Destroy(copiedSettings);
                 UnityEngine.Object.Destroy(host);
                 AssetDatabase.DeleteAsset(temporaryTemplatePath);
+                AssetDatabase.DeleteAsset(temporaryStylePath);
             }
         }
 #endif
