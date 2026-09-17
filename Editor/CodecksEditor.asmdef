@@ -1,6 +1,6 @@
 {
     "name": "CodecksEditor",
-    "references": [],
+    "references": ["Unity.Newtonsoft.Json"],
     "includePlatforms": [
         "Editor"
     ],

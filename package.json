@@ -1,0 +1,29 @@
+{
+  "name": "com.aefreedman.codecks-unity",
+  "version": "0.1.0-pre.1",
+  "displayName": "Codecks Bug & Feedback Reporter",
+  "description": "Independently maintained Unity integration for collecting Codecks bug reports and feedback.",
+  "unity": "6000.5",
+  "license": "MIT",
+  "repository": "https://github.com/aefreedman/codecks-unity.git",
+  "documentationUrl": "https://github.com/aefreedman/codecks-unity#readme",
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1",
+    "com.unity.ugui": "2.5.0",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.screencapture": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Feedback Reporter (uGUI)",
+      "description": "A uGUI feedback reporter scene.",
+      "path": "Samples~/FeedbackReporter"
+    },
+    {
+      "displayName": "Feedback Reporter (UI Toolkit) - pending",
+      "description": "Placeholder for the planned UI Toolkit Panel Renderer sample.",
+      "path": "Samples~/UIToolkitFeedbackReporter"
+    }
+  ]
+}

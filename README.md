@@ -2,14 +2,16 @@
 
 Collect bugs and feedback right from your Unity game and keep players in the loop what happens with their feedback.
 
+This is an independently maintained fork of the original Codecks Unity plugin. It is not affiliated with or endorsed by Codecks GmbH.
+
 ## Documentation
 
-For the complete picture head to the [Codecks Manual Page](https://manual.codecks.io/user-reports/).
+Package documentation is available in [Documentation~](./Documentation~/index.md). The original Codecks user-report documentation remains available at the [Codecks Manual Page](https://manual.codecks.io/user-reports/).
 
 
 ## Set up
 
-Move the `Assets/Codecks_io/Codecks Bugs & Feedback Reporter` folder into the `Assets/Codecks Bugs & Feedback Reporter` folder of your project. Once imported, you can find a scene named `CodecksSampleScene` that contains a default layout and sample setup for you to check out. Unity will also ask to install the `TextMesh Pro` plugin. This plugin is necessary to run the sample scene.
+Install this repository as a UPM package, then import the **Feedback Reporter (uGUI)** sample from Package Manager. The imported sample contains `CodecksSampleScene` with the default layout and setup. Its required Unity UI and TextMesh Pro dependencies are declared by the package.
 
 ## Getting started
 
@@ -32,10 +34,10 @@ The code is licensed under the MIT license. See [`LICENSE.md`](./LICENSE.md).
 
 ### Docs
 
-The sources for the docs can be found in the [`docs.md`](./Assets/Codecks_io/Codecks%20Bug%20%26%20Feedback%20Reporter/Documentation/docs.md) file.
+The sources for the docs can be found in [`Documentation~/index.md`](./Documentation~/index.md).
 
-To create a PDF you need node v14+ installed on your machine. Run this command from the [`Documentation`](./Assets/Codecks_io/Codecks%20Bug%20%26%20Feedback%20Reporter/Documentation/) folder:
+To create a PDF you need node v14+ installed on your machine. Run this command from [`Documentation~`](./Documentation~/):
 
 ```sh
-cat ./docs.md | npx md-to-pdf > ./Codecks\ Unity\ Plugin\ Manual.pdf
+cat ./index.md | npx md-to-pdf > ./Codecks\ Unity\ Plugin\ Manual.pdf
 ```
