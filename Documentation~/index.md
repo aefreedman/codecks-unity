@@ -55,7 +55,7 @@ Both supplied forms require at least ten report characters. They capture a scree
 
 The request path uses UnityWebRequest and supports report creation plus server-provided attachment uploads. Failed requests leave the form available for a retry. The uGUI form uses JPG attachments on standalone builds and PNG elsewhere; the UI Toolkit form follows the same policy.
 
-The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 6000.6.0f1 EditMode. A graphics-capable player visual check, standalone IL2CPP build/run, and a disposable-token live submission remain release gates; do not infer support for untested player platforms from the editor checks.
+The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 6000.6.0f1 with EditMode, localhost UnityWebRequest create/upload PlayMode, and graphics-capable form PlayMode coverage. A disposable Windows IL2CPP build was attempted on 6000.6.0f1, but Unity reported that its selected IL2CPP backend is not installed, so no IL2CPP player support or player visual behavior is claimed. A successful standalone IL2CPP build/run and a disposable-token live submission remain release gates; do not infer support for untested player platforms from editor checks.
 
 ## Migrate from a copied plugin folder
 

@@ -64,8 +64,8 @@ Existing runtime script GUIDs and public component names are preserved for the l
 ## Tested support and current limits
 
 - Minimum package declaration: Unity 6000.5. A clean 6000.5.5 project compiled the package and verified the uGUI/TMP sample.
-- Primary behavior checks: Unity 6000.6.0f1 EditMode checks verified runtime request behavior and both samples imported through Package Manager.
-- Not yet release-validated: graphics-capable player visual checks, standalone IL2CPP player build/run, and a live Codecks submission using a disposable token.
+- Primary behavior checks: Unity 6000.6.0f1 has 16 runtime EditMode tests, 4 imported UI Toolkit EditMode tests, loopback UnityWebRequest create/upload PlayMode tests, and graphics-capable PlayMode form tests. The loopback endpoint is bound to localhost and uses no credentials.
+- Windows standalone IL2CPP build/run was attempted in a disposable Unity 6000.6.0f1 project, but Unity reported that the selected IL2CPP backend is not installed. Therefore no IL2CPP player support or player visual behavior is claimed.
 - Screenshot capture depends on a graphics-capable runtime. When it fails, reports are sent without a screenshot rather than blocking the form.
 
 ## Attribution, branding, and license

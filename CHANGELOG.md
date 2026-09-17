@@ -7,7 +7,7 @@ All notable changes to this independent UPM fork are documented here. Versions r
 ### Release gates
 
 - Verify clean-project installation from the published branch and eventual pinned tag.
-- Complete a graphics-capable player visual check and standalone IL2CPP build/run.
+- Complete a standalone IL2CPP build/run and player visual check. A disposable Windows IL2CPP build was attempted with Unity 6000.6.0f1, but the Editor reported that the selected IL2CPP backend is not installed.
 - Submit one report using a user-provided disposable token; no live report has been submitted during package preparation.
 - Confirm permission for continued distribution or modification of Codecks branding beyond the software license.
 - Obtain approval before creating a matching Git tag, pushing, or publishing.
@@ -20,6 +20,7 @@ All notable changes to this independent UPM fork are documented here. Versions r
 - Independently importable uGUI and runtime UI Toolkit feedback reporter samples.
 - A Panel Renderer-based UI Toolkit template with a sample-owned runtime theme and reload-safe bindings.
 - Runtime request validation and focused EditMode coverage for report creation, upload handling, screenshots, and UI lifecycle behavior.
+- Localhost UnityWebRequest PlayMode coverage for report creation and multipart attachment upload, plus graphics-capable PlayMode coverage for both supplied forms.
 
 ### Changed
 
@@ -30,5 +31,5 @@ All notable changes to this independent UPM fork are documented here. Versions r
 ### Known limits
 
 - The package compiles in Unity 6000.5.5 and has focused behavior checks in Unity 6000.6.0f1 EditMode.
-- Player visual validation, standalone IL2CPP build/run, and a live disposable-token submission remain incomplete release gates.
+- A standalone IL2CPP build/run and player visual validation remain incomplete: a disposable Windows IL2CPP build attempt found the selected backend unavailable in the installed Unity 6000.6.0f1 Editor. A live disposable-token submission also remains an external release gate.
 - Screenshot capture is optional: a capture failure logs a warning and sends the report without an attachment.
