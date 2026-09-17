@@ -1,0 +1,19 @@
+{
+    "name": "Codecks.Runtime.PlayMode.Tests",
+    "rootNamespace": "Codecks.Tests.PlayMode",
+    "references": [
+        "CodecksRuntime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}
