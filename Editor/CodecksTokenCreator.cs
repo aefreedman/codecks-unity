@@ -31,16 +31,24 @@ namespace Codecks.Editor
                 Uri.EscapeDataString(accessKey);
         }
 
+        internal static Func<string, string, UnityWebRequest> PostRequestFactory = HttpPost;
+
         static UnityWebRequest HttpPost(string url, string bodyJsonString)
         {
-            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
+            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+            try
             {
-                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(bodyJsonString)),
-                downloadHandler = new DownloadHandlerBuffer(),
-                timeout = RequestTimeoutSeconds
-            };
-            request.SetRequestHeader("Content-Type", "application/json");
-            return request;
+                request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(bodyJsonString));
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.timeout = RequestTimeoutSeconds;
+                request.SetRequestHeader("Content-Type", "application/json");
+                return request;
+            }
+            catch
+            {
+                request.Dispose();
+                throw;
+            }
         }
 
         public static void CreateAndSetNewToken(string accessKey, string tokenLabel, Action<bool> callback)
@@ -83,6 +91,20 @@ namespace Codecks.Editor
             }
         }
 
+        internal static bool TryDeserializeTokenResponse(string responseText, out TokenResponseData response)
+        {
+            try
+            {
+                response = JsonConvert.DeserializeObject<TokenResponseData>(responseText);
+                return response.ok && !string.IsNullOrEmpty(response.token);
+            }
+            catch (Exception)
+            {
+                response = default;
+                return false;
+            }
+        }
+
         public static void CreateNewToken(string accessKey, string tokenLabel, Action<string> callback)
         {
             UnityWebRequest request = null;
@@ -100,7 +122,10 @@ namespace Codecks.Editor
             try
             {
                 string requestJson = JsonConvert.SerializeObject(new TokenRequestData { label = tokenLabel });
-                request = HttpPost(BuildTokenUrl(accessKey), requestJson);
+                request = PostRequestFactory(BuildTokenUrl(accessKey), requestJson);
+                if (request == null)
+                    throw new InvalidOperationException("Codecks request factory returned no request.");
+
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
                 operation.completed += _ =>
                 {
@@ -113,8 +138,7 @@ namespace Codecks.Editor
                             return;
                         }
 
-                        TokenResponseData response = JsonConvert.DeserializeObject<TokenResponseData>(request.downloadHandler.text);
-                        if (!response.ok || string.IsNullOrEmpty(response.token))
+                        if (!TryDeserializeTokenResponse(request.downloadHandler.text, out TokenResponseData response))
                         {
                             Debug.LogWarning("Codecks token request was rejected or returned no token.");
                             Complete(null);

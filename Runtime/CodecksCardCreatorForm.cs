@@ -60,9 +60,9 @@ namespace Codecks.Runtime
                     Debug.LogWarning("Codecks report form could not capture a screenshot; the report will be sent without one.");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.LogWarning($"Codecks report form could not capture a screenshot: {ex.Message}. The report will be sent without one.");
+                Debug.LogWarning("Codecks report form could not capture a screenshot; the report will be sent without one.");
             }
             finally
             {

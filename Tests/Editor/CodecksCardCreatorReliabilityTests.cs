@@ -1,10 +1,9 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using Codecks.Editor;
 using Codecks.Runtime;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 
 namespace Codecks.Tests.Editor
 {
@@ -51,7 +50,7 @@ namespace Codecks.Tests.Editor
         [Test]
         public void TryValidateCreateResponse_AcceptsNoAttachmentsWithoutUploadUrls()
         {
-            var response = new CardCreateResponseData { ok = true, uploadUrls = null };
+            var response = new CardCreateResponseData { ok = true, cardId = "card-123", uploadUrls = null };
 
             bool success = CodecksCardCreator.TryValidateCreateResponse(
                 response, new List<string>(), out var uploads, out string error);
@@ -62,9 +61,26 @@ namespace Codecks.Tests.Editor
         }
 
         [Test]
+        public void TryValidateCreateResponse_RejectsSuccessfulResponseWithoutCardId()
+        {
+            var response = new CardCreateResponseData { ok = true, uploadUrls = Array.Empty<CardCreateFileResponseData>() };
+
+            bool success = CodecksCardCreator.TryValidateCreateResponse(
+                response, new List<string>(), out _, out string error);
+
+            Assert.That(success, Is.False);
+            Assert.That(error, Is.EqualTo("Codecks returned an invalid report response."));
+        }
+
+        [Test]
         public void TryValidateCreateResponse_RejectsMissingUploadInstruction()
         {
-            var response = new CardCreateResponseData { ok = true, uploadUrls = new CardCreateFileResponseData[0] };
+            var response = new CardCreateResponseData
+            {
+                ok = true,
+                cardId = "card-123",
+                uploadUrls = Array.Empty<CardCreateFileResponseData>()
+            };
 
             bool success = CodecksCardCreator.TryValidateCreateResponse(
                 response, new List<string> { "expected.png" }, out _, out string error);
@@ -82,7 +98,12 @@ namespace Codecks.Tests.Editor
                 url = "https://example.invalid/upload",
                 fields = new Dictionary<string, string>()
             };
-            var response = new CardCreateResponseData { ok = true, uploadUrls = new[] { upload, upload } };
+            var response = new CardCreateResponseData
+            {
+                ok = true,
+                cardId = "card-123",
+                uploadUrls = new[] { upload, upload }
+            };
 
             bool success = CodecksCardCreator.TryValidateCreateResponse(
                 response, new List<string> { "expected.png", "other.png" }, out _, out string error);
@@ -97,6 +118,7 @@ namespace Codecks.Tests.Editor
             var response = new CardCreateResponseData
             {
                 ok = true,
+                cardId = "card-123",
                 uploadUrls = new[]
                 {
                     new CardCreateFileResponseData
@@ -115,25 +137,59 @@ namespace Codecks.Tests.Editor
             Assert.That(error, Is.EqualTo("Codecks returned invalid upload instructions."));
         }
 
-        [UnityTest]
-        public IEnumerator CreateNewCard_EmptyTokenCompletesCallbackOnce()
+        [Test]
+        public void CreateNewCard_EmptyTokenCompletesCallbackOnce()
         {
             var gameObject = new GameObject("Codecks reliability test");
-            var creator = gameObject.AddComponent<CodecksCardCreator>();
-            int callbackCount = 0;
-            bool success = true;
-
-            creator.CreateNewCard("report", CodecksCardCreator.CodecksSeverity.None, null, (wasSuccessful, _) =>
+            try
             {
-                callbackCount++;
-                success = wasSuccessful;
-            });
+                var creator = gameObject.AddComponent<CodecksCardCreator>();
+                int callbackCount = 0;
+                bool success = true;
 
-            yield return null;
+                creator.CreateNewCard("report", CodecksCardCreator.CodecksSeverity.None, null, (wasSuccessful, _) =>
+                {
+                    callbackCount++;
+                    success = wasSuccessful;
+                });
 
-            Assert.That(callbackCount, Is.EqualTo(1));
-            Assert.That(success, Is.False);
-            Object.DestroyImmediate(gameObject);
+                Assert.That(callbackCount, Is.EqualTo(1));
+                Assert.That(success, Is.False);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
+        }
+
+        [Test]
+        public void CreateNewCard_RequestConstructionFailureCompletesCallbackOnce()
+        {
+            var originalFactory = CodecksCardCreator.PostRequestFactory;
+            var gameObject = new GameObject("Codecks reliability test");
+            try
+            {
+                CodecksCardCreator.PostRequestFactory = (_, _) => throw new InvalidOperationException("test failure");
+                var creator = gameObject.AddComponent<CodecksCardCreator>();
+                creator.defaultToken = "token";
+                int callbackCount = 0;
+                string result = null;
+
+                creator.CreateNewCard("report", CodecksCardCreator.CodecksSeverity.None, null, (success, message) =>
+                {
+                    Assert.That(success, Is.False);
+                    callbackCount++;
+                    result = message;
+                });
+
+                Assert.That(callbackCount, Is.EqualTo(1));
+                Assert.That(result, Is.EqualTo("could not prepare the Codecks report request."));
+            }
+            finally
+            {
+                CodecksCardCreator.PostRequestFactory = originalFactory;
+                UnityEngine.Object.DestroyImmediate(gameObject);
+            }
         }
 
         [Test]
@@ -142,6 +198,7 @@ namespace Codecks.Tests.Editor
             var response = new CardCreateResponseData
             {
                 ok = true,
+                cardId = "card-123",
                 uploadUrls = new[]
                 {
                     new CardCreateFileResponseData
@@ -158,6 +215,38 @@ namespace Codecks.Tests.Editor
 
             Assert.That(success, Is.False);
             Assert.That(error, Is.EqualTo("Codecks returned invalid upload instructions."));
+        }
+
+        [Test]
+        public void TryDeserializeTokenResponse_RejectsMalformedOrIncompleteResponse()
+        {
+            Assert.That(CodecksTokenCreator.TryDeserializeTokenResponse("{not json", out _), Is.False);
+            Assert.That(CodecksTokenCreator.TryDeserializeTokenResponse("{\"ok\":true}", out _), Is.False);
+        }
+
+        [Test]
+        public void CreateNewToken_RequestStartupFailureCompletesCallbackOnce()
+        {
+            var originalFactory = CodecksTokenCreator.PostRequestFactory;
+            try
+            {
+                CodecksTokenCreator.PostRequestFactory = (_, _) => throw new InvalidOperationException("test failure");
+                int callbackCount = 0;
+                string token = "unexpected";
+
+                CodecksTokenCreator.CreateNewToken("key", "label", value =>
+                {
+                    callbackCount++;
+                    token = value;
+                });
+
+                Assert.That(callbackCount, Is.EqualTo(1));
+                Assert.That(token, Is.Null);
+            }
+            finally
+            {
+                CodecksTokenCreator.PostRequestFactory = originalFactory;
+            }
         }
     }
 }

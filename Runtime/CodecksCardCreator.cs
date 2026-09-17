@@ -65,16 +65,24 @@ namespace Codecks.Runtime
             return endpoint + "?token=" + Uri.EscapeDataString(token);
         }
 
+        internal static Func<string, string, UnityWebRequest> PostRequestFactory = HttpPost;
+
         static UnityWebRequest HttpPost(string url, string bodyJsonString)
         {
-            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST)
+            var request = new UnityWebRequest(url, UnityWebRequest.kHttpVerbPOST);
+            try
             {
-                uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(bodyJsonString)),
-                downloadHandler = new DownloadHandlerBuffer(),
-                timeout = RequestTimeoutSeconds
-            };
-            request.SetRequestHeader("Content-Type", "application/json");
-            return request;
+                request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(bodyJsonString));
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.timeout = RequestTimeoutSeconds;
+                request.SetRequestHeader("Content-Type", "application/json");
+                return request;
+            }
+            catch
+            {
+                request.Dispose();
+                throw;
+            }
         }
 
         internal static bool TryValidateCreateResponse(
@@ -87,6 +95,12 @@ namespace Codecks.Runtime
             if (!response.ok)
             {
                 error = "Codecks rejected the report request.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.cardId))
+            {
+                error = "Codecks returned an invalid report response.";
                 return false;
             }
 
@@ -184,29 +198,28 @@ namespace Codecks.Runtime
             if (files != null && files.Any(file => file.Value.Item1 == null))
                 throw new Exception("Null file in files list");
 
-            StartCoroutine(CreateNewCardCoroutine(text, files, severity, userEmail, resultDelegate));
+            StartNewCardRequest(text, files, severity, userEmail, resultDelegate);
         }
 
         public void CreateNewCard(string text, CodecksSeverity severity = CodecksSeverity.None,
             string userEmail = null, CardCreationResultDelegate resultDelegate = null)
         {
-            StartCoroutine(CreateNewCardCoroutine(text, null, severity, userEmail, resultDelegate));
+            StartNewCardRequest(text, null, severity, userEmail, resultDelegate);
         }
 
-        IEnumerator CreateNewCardCoroutine(string text, Dictionary<string, (byte[], CodecksFileType)> files = null,
-            CodecksSeverity severity = CodecksSeverity.None, string userEmail = null,
-            CardCreationResultDelegate resultDelegate = null)
+        void StartNewCardRequest(string text, Dictionary<string, (byte[], CodecksFileType)> files,
+            CodecksSeverity severity, string userEmail, CardCreationResultDelegate resultDelegate)
         {
             string tokenToUse = string.IsNullOrEmpty(loadedToken) ? defaultToken : loadedToken;
             if (string.IsNullOrEmpty(tokenToUse))
             {
                 resultDelegate?.Invoke(false, "empty codecks token");
-                yield break;
+                return;
             }
 
             files ??= new Dictionary<string, (byte[], CodecksFileType)>();
 
-            UnityWebRequest request;
+            UnityWebRequest request = null;
             try
             {
                 string severityString = severity switch
@@ -226,14 +239,31 @@ namespace Codecks.Runtime
                 };
 
                 string json = JsonConvert.SerializeObject(cardData).Replace(",\"severity\":null", "");
-                request = HttpPost(BuildCreateReportUrl(codecksURL, tokenToUse), json);
+                request = PostRequestFactory(BuildCreateReportUrl(codecksURL, tokenToUse), json);
+                if (request == null)
+                    throw new InvalidOperationException("Codecks request factory returned no request.");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                resultDelegate?.Invoke(false, $"exception sending initial request: {ex.Message}");
-                yield break;
+                request?.Dispose();
+                resultDelegate?.Invoke(false, "could not prepare the Codecks report request.");
+                return;
             }
 
+            try
+            {
+                StartCoroutine(CreateNewCardCoroutine(request, files, resultDelegate));
+            }
+            catch (Exception)
+            {
+                request.Dispose();
+                resultDelegate?.Invoke(false, "could not start the Codecks report request.");
+            }
+        }
+
+        IEnumerator CreateNewCardCoroutine(UnityWebRequest request,
+            Dictionary<string, (byte[], CodecksFileType)> files, CardCreationResultDelegate resultDelegate)
+        {
             UnityWebRequestAsyncOperation requestOperation;
             try
             {
