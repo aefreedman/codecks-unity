@@ -72,7 +72,7 @@ namespace Codecks.Runtime
             var captureHost = cardCreator;
             pendingOpening = captureHost.gameObject.AddComponent<CodecksPendingOpening>();
             pendingOpening.Initialize(
-                () => this != null && enabled && !destroying && captureHost != null && captureHost.isActiveAndEnabled,
+                () => IsPresentationAvailable() && captureHost != null && captureHost.isActiveAndEnabled,
                 () =>
                 {
                     if (!lifecycle.IsCurrent(opening)) return;
@@ -256,8 +256,8 @@ namespace Codecks.Runtime
         private int BeginSession()
         {
             int opening = lifecycle.Begin(ResetSession,
-                () => this != null && !destroying && enabled ? AcquireScope?.Invoke() : null, HideCodecksForm);
-            if (lifecycle.IsCurrent(opening) && (this == null || destroying || !enabled)) CloseSession(true);
+                () => IsPresentationAvailable() ? AcquireScope?.Invoke() : null, HideCodecksForm);
+            if (lifecycle.IsCurrent(opening) && !IsPresentationAvailable()) CloseSession(true);
             return opening;
         }
 
@@ -286,8 +286,14 @@ namespace Codecks.Runtime
             });
         }
 
+        // The view itself is intentionally inactive during capture; only its ancestors
+        // must be active. Read the current parent each time so reparenting is supported.
+        private bool IsPresentationAvailable() =>
+            this != null && !destroying && enabled &&
+            (transform.parent == null || transform.parent.gameObject.activeInHierarchy);
+
         private bool IsCurrentSession(int activeSession) =>
-            this != null && !destroying && enabled && lifecycle.IsCurrent(activeSession);
+            IsPresentationAvailable() && lifecycle.IsCurrent(activeSession);
 
         /// <summary>
         /// Called when the Cancel button is clicked.

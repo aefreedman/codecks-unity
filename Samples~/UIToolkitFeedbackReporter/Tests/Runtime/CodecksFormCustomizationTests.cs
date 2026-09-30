@@ -509,6 +509,85 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             Assert.That(form.Captures, Is.Zero);
         }
 
+        [TestCase("parent-disabled")] [TestCase("reparented")] [TestCase("state-callback")]
+        [TestCase("acquire-callback")] [TestCase("pre-capture")]
+        public void Lifecycle_UGUI_AncestorUnavailableReleasesWithoutEndOfFrame(string invalidation)
+        {
+            using var form = new Form(false);
+            var container = new GameObject("Active form container");
+            var unavailableContainer = new GameObject("Unavailable form container");
+            try
+            {
+                unavailableContainer.SetActive(false);
+                form.ParentTo(container.transform);
+                int acquired = 0, disposed = 0;
+                form.Acquire = () =>
+                {
+                    acquired++;
+                    if (invalidation == "acquire-callback") container.SetActive(false);
+                    return new Scope(() => disposed++);
+                };
+                if (invalidation == "state-callback")
+                    form.Observe(state => { if (state == CodecksFormState.Opening) container.SetActive(false); });
+
+                form.OpenDefault();
+                if (invalidation != "state-callback" && invalidation != "acquire-callback")
+                {
+                    Assert.That(form.State, Is.EqualTo(CodecksFormState.Opening));
+                    var guard = form.OpeningGuard;
+                    if (invalidation == "reparented") form.ParentTo(unavailableContainer.transform);
+                    else container.SetActive(false);
+
+                    // Advance the normal-frame validity check, or the coroutine's
+                    // pre-capture check directly, without advancing/rendering EOF.
+                    if (invalidation == "pre-capture") form.ResumeCaptureWithoutEndOfFrame();
+                    else guard.GetType().GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(guard, null);
+                }
+
+                Assert.That(form.State, Is.EqualTo(CodecksFormState.Closed));
+                Assert.That(form.IsOpen, Is.False);
+                Assert.That(form.Captures, Is.Zero);
+                Assert.That(acquired, Is.EqualTo(invalidation == "state-callback" ? 0 : 1));
+                Assert.That(disposed, Is.EqualTo(acquired), "Each acquired scope is released exactly once without EOF.");
+                form.Close();
+                Assert.That(disposed, Is.EqualTo(acquired), "A repeated close must not release twice.");
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(container);
+                UnityEngine.Object.Destroy(unavailableContainer);
+            }
+        }
+
+        [Test]
+        public void Lifecycle_UGUI_OpeningGuardUsesCurrentParentAfterReparenting()
+        {
+            using var form = new Form(false);
+            var previousContainer = new GameObject("Previous form container");
+            var currentContainer = new GameObject("Current form container");
+            try
+            {
+                form.ParentTo(previousContainer.transform);
+                int disposed = 0;
+                form.Acquire = () => new Scope(() => disposed++);
+                form.OpenDefault();
+                form.ParentTo(currentContainer.transform);
+                previousContainer.SetActive(false);
+                var guard = form.OpeningGuard;
+                guard.GetType().GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(guard, null);
+                Assert.That(form.State, Is.EqualTo(CodecksFormState.Opening), "The old ancestor is no longer relevant.");
+                Assert.That(form.Captures, Is.Zero);
+                Assert.That(disposed, Is.Zero);
+                form.Close();
+                Assert.That(disposed, Is.EqualTo(1));
+            }
+            finally
+            {
+                UnityEngine.Object.Destroy(previousContainer);
+                UnityEngine.Object.Destroy(currentContainer);
+            }
+        }
+
         [Test]
         public void Lifecycle_ToolkitBackendDestroyedPendingOpeningReleasesWithoutEndOfFrame()
         {
@@ -542,6 +621,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             public bool IsSubmitting => baseType == typeof(CodecksCardCreatorForm) ? ugui.IsSubmitting : toolkit.IsSubmitting;
             public bool SendLatched => Field<bool>("submissionInFlight");
             public MonoBehaviour OpeningGuard => backend.GetComponents<MonoBehaviour>().Single(c => c.GetType().Name == "CodecksPendingOpening");
+            public void ParentTo(Transform parent) => host.transform.SetParent(parent, false);
+            public void ResumeCaptureWithoutEndOfFrame()
+            {
+                var routine = (IEnumerator)baseType.GetMethod("ShowCodecksFormCoroutine", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Controller, new object[] { Session });
+                Assert.That(routine.MoveNext(), Is.True); // Yield the EOF marker, without waiting for it.
+                Assert.That(routine.MoveNext(), Is.False); // Check current presentation before capture.
+            }
             public void DisableBackend() => backend.GetComponent<CodecksCardCreator>().enabled = false;
             public void DestroyBackend() => UnityEngine.Object.DestroyImmediate(backend);
             public void PulseToolkitUpdate() => baseType.GetMethod("Update", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(Controller, null);
