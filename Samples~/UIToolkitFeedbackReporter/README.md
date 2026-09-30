@@ -2,7 +2,7 @@
 
 Import this sample from **Window > Package Manager > Codecks Bug & Feedback Reporter > Samples**, then open `CodecksUIToolkitFeedbackReporterScene`. The sample uses runtime UI Toolkit only: it does not require the uGUI sample or TMP Essential Resources. It contains no report token or credentials.
 
-**Forthcoming 0.2.0 (unreleased):** modal lifecycle and form-only composition described here are not part of the published `v0.1.0` install.
+**0.2.0:** this sample includes modal lifecycle and form-only composition. Updating the package does not update previously imported copies; merge these changes deliberately into customized controllers/UI assets, preserving settings and scene references.
 
 ## Run the standalone sample
 

@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": "https://github.com/aefreedman/codecks-unity.git",
   "documentationUrl": "https://github.com/aefreedman/codecks-unity#readme",
-  "changelogUrl": "https://github.com/aefreedman/codecks-unity/blob/feat/modal-integration/CHANGELOG.md",
+  "changelogUrl": "https://github.com/aefreedman/codecks-unity/blob/v0.2.0/CHANGELOG.md",
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1",
     "com.unity.ugui": "2.5.0",

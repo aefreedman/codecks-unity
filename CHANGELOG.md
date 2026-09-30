@@ -2,9 +2,7 @@
 
 All notable changes to this independent UPM fork are documented here. Releases use matching package versions and `v<version>` Git tags. Version 0.x APIs may change between minor releases; migration guidance accompanies breaking changes.
 
-## 0.2.0 (unreleased)
-
-Prepared on `feat/modal-integration`; no `v0.2.0` tag or release is published yet. The published `v0.1.0` installation does not include these additions.
+## 0.2.0
 
 ### Added
 

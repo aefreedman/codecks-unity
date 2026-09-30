@@ -4,7 +4,7 @@ An independently maintained UPM fork of the [Codecks Unity plugin](https://githu
 
 This Markdown manual is the maintained consumer documentation. The former PDF is not a supported release artifact.
 
-This feature branch prepares **0.2.0 (unreleased)**. The published `v0.1.0` install below does not include the modal lifecycle or form-only template additions described here; no `v0.2.0` tag is claimed.
+Version **0.2.0** adds observable modal lifecycle, caller-owned scope hooks and an embeddable form-only Toolkit template. Existing imported samples are project-owned copies: updating the package does not replace their controllers or UI assets. Import the 0.2.0 sample into its new version folder and deliberately merge changes into customized copies; preserve scene references, settings and branding.
 
 ## Install through Package Manager
 
@@ -12,10 +12,10 @@ The package requires Unity 6000.5 or later and Git on the machine that resolves 
 
 1. Open **Window > Package Manager**.
 2. Select **Add package from git URL**.
-3. Enter `https://github.com/aefreedman/codecks-unity.git#v0.1.0`.
+3. Enter `https://github.com/aefreedman/codecks-unity.git#v0.2.0`.
 4. Select the package, open **Samples**, and import the implementation you need.
 
-Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.1.0` tag. Do not use an untagged branch as a stable dependency.
+Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.2.0` tag. Do not use an untagged branch as a stable dependency.
 
 ## Samples
 
@@ -35,7 +35,7 @@ The sample GameObject has a Panel Renderer, `CodecksCardCreator`, and `CodecksUI
 
 To embed the form in a project:
 
-1. In forthcoming 0.2.0, copy `CodecksFeedbackForm.uxml`, `CodecksFeedbackReporter.uss`, the controller, and branding asset from the imported sample into `Assets`. Copy `CodecksFeedbackReporter.uxml` too if retaining the standalone launcher; it composes the form through a relative template reference.
+1. In 0.2.0, copy `CodecksFeedbackForm.uxml`, `CodecksFeedbackReporter.uss`, the controller, and branding asset from the imported sample into `Assets`. Copy `CodecksFeedbackReporter.uxml` too if retaining the standalone launcher; it composes the form through a relative template reference.
 2. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject.
 3. Assign the copied form-only `CodecksFeedbackForm.uxml` (or standalone composition) and Panel Settings to the Panel Renderer, and the same `CodecksCardCreator` to the controller.
 4. Preserve the required UXML element names: `codecks-feedback-overlay`, `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`, `codecks-feedback-send`, `codecks-feedback-cancel`, and `codecks-feedback-status`.
@@ -93,7 +93,7 @@ These are ordinary consumer-owned subclasses/public calls. `CodecksCardCreator.C
 
 ## Consumer-owned modal integration
 
-These APIs are **forthcoming 0.2.0**, not in the published `v0.1.0` install. Both `Codecks.Runtime.CodecksCardCreatorForm` and the imported `Codecks.Samples.UIToolkitFeedbackReporter.CodecksUIToolkitFeedbackController` expose:
+These APIs are available in **0.2.0**. Both `Codecks.Runtime.CodecksCardCreatorForm` and the imported `Codecks.Samples.UIToolkitFeedbackReporter.CodecksUIToolkitFeedbackController` expose:
 
 ```csharp
 CodecksFormState State { get; } // Codecks.Runtime: Closed, Opening, Open

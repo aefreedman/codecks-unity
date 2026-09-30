@@ -4,7 +4,7 @@ An independently maintained UPM fork of the [Codecks Unity plugin](https://githu
 
 This package provides uGUI and runtime UI Toolkit feedback forms backed by `CodecksCardCreator`. It targets Unity 6000.5 or later. Read the [consumer manual](Documentation~/index.md) and [changelog](CHANGELOG.md). Fork-specific support belongs in this repository's [issue tracker](https://github.com/aefreedman/codecks-unity/issues), not Codecks support.
 
-This feature branch prepares **0.2.0 (unreleased)**. The published `v0.1.0` install below does not include the modal lifecycle or form-only template additions described here; no `v0.2.0` tag is claimed.
+Version **0.2.0** adds observable modal lifecycle, caller-owned scope hooks and an embeddable form-only Toolkit template. Existing imported samples are project-owned copies: updating the package does not replace their controllers or UI assets. Import the 0.2.0 sample into its new version folder and deliberately merge changes into customized copies; preserve scene references, settings and branding.
 
 ## Install
 
@@ -12,14 +12,14 @@ This feature branch prepares **0.2.0 (unreleased)**. The published `v0.1.0` inst
 2. In Unity, open **Window > Package Manager**, select **Add package from git URL**, and enter:
 
    ```text
-   https://github.com/aefreedman/codecks-unity.git#v0.1.0
+   https://github.com/aefreedman/codecks-unity.git#v0.2.0
    ```
 
 3. Open the package's **Samples** tab and import one or both samples:
    - **Feedback Reporter (uGUI)** for the existing Canvas/TMP implementation.
    - **Feedback Reporter (UI Toolkit)** for the Panel Renderer implementation.
 
-Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.1.0` tag; avoid untagged branches for stable dependencies.
+Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.2.0` tag; avoid untagged branches for stable dependencies.
 
 ## Choose an implementation
 
@@ -33,7 +33,7 @@ The sample EventSystem uses `StandaloneInputModule`, suitable for the legacy Inp
 
 The UI Toolkit sample contains `CodecksUIToolkitFeedbackReporterScene`. Its form uses a **Panel Renderer**, not `UIDocument`; assign its Visual Tree Asset (UXML) and Panel Settings, then keep `CodecksCardCreator` and `CodecksUIToolkitFeedbackController` on the same GameObject. The supplied Panel Settings references a sample-owned runtime theme, so it does not rely on project UI Toolkit assets.
 
-For embedding in the forthcoming 0.2.0, copy `CodecksFeedbackForm.uxml`, the shared USS, controller, and branding into `Assets` before editing. The existing standalone `CodecksFeedbackReporter.uxml` composes that same form plus its optional launcher; copy both UXML files if using it. Keep the controller's required named elements, use explicit Panel Renderer sort orders when sharing Panel Settings, and retain the reload callback lifecycle so bindings are rebuilt after the source asset or Panel Settings changes. The supplied controller focuses the report field when opening. See the [UI Toolkit sample guide](Samples~/UIToolkitFeedbackReporter/README.md) for required names, styling hooks, and metadata customization.
+For embedding in 0.2.0, copy `CodecksFeedbackForm.uxml`, the shared USS, controller, and branding into `Assets` before editing. The existing standalone `CodecksFeedbackReporter.uxml` composes that same form plus its optional launcher; copy both UXML files if using it. Keep the controller's required named elements, use explicit Panel Renderer sort orders when sharing Panel Settings, and retain the reload callback lifecycle so bindings are rebuilt after the source asset or Panel Settings changes. The supplied controller focuses the report field when opening. See the [UI Toolkit sample guide](Samples~/UIToolkitFeedbackReporter/README.md) for required names, styling hooks, and metadata customization.
 
 ## Tokens and report data
 
@@ -59,7 +59,7 @@ Do not edit files in PackageCache. Import a sample, copy the consumer-owned UI a
 
 Both forms preserve `ShowCodecksForm()` for default capture/UnityEvents and add immediate `ShowCodecksForm(byte[], CodecksCardCreator.CodecksFileType)` (JPG/PNG) and `ShowCodecksFormWithoutScreenshot()`. Use a screenshot captured before opening a pause menu, or skip capture entirely. Both expose overridable `CaptureScreenshot()` alongside metadata hooks; Toolkit's sample launcher is optional for external menus/hotkeys. See the [consumer-controlled capture examples](Documentation~/index.md#consumer-controlled-capture-and-opening) for encoding/ownership and session rules.
 
-The forthcoming 0.2.0 exposes matching modal state/events, current-session submitting state and an optional caller scope on both forms. The project owns pause, keyboard/gamepad command routing and focus restoration; Toolkit input boundaries stop bubble-phase pointer events only. See [modal integration](Documentation~/index.md#consumer-owned-modal-integration) for exact ordering and limitations.
+Version 0.2.0 exposes matching modal state/events, current-session submitting state and an optional caller scope on both forms. The project owns pause, keyboard/gamepad command routing and focus restoration; Toolkit input boundaries stop bubble-phase pointer events only. See [modal integration](Documentation~/index.md#consumer-owned-modal-integration) for exact ordering and limitations.
 
 `CodecksCardCreator.CreateNewCard` is also available for a completely custom UI. Preserve the public component names, serialized references, and callback behavior when migrating an existing integration.
 
