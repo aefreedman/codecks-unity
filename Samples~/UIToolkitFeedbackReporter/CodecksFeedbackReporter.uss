@@ -2,15 +2,20 @@
     flex-grow: 1;
     justify-content: center;
     align-items: center;
-    padding: 24px;
+    color: white;
+    font-size: 14px;
 }
 
-.codecks-feedback-launcher, .codecks-feedback-send {
-    background-color: rgb(32, 111, 176);
+.codecks-feedback-launcher {
+    width: 200px;
+    height: 50px;
+    background-color: black;
     color: white;
+    font-size: 20px;
 }
 
 .codecks-feedback-overlay {
+    display: none;
     position: absolute;
     left: 0;
     right: 0;
@@ -18,50 +23,121 @@
     bottom: 0;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.55);
-    padding: 24px;
+    padding: 12px;
+}
+
+.codecks-feedback-scroll {
+    width: 600px;
+    max-width: 100%;
+    max-height: 100%;
 }
 
 .codecks-feedback-dialog {
-    width: 520px;
-    max-width: 100%;
-    background-color: rgb(248, 249, 250);
+    background-color: rgb(76, 80, 96);
     padding: 20px;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
 }
 
 .codecks-feedback-title {
-    font-size: 22px;
+    font-size: 16px;
     -unity-font-style: bold;
-    margin-bottom: 8px;
-}
-
-.codecks-feedback-help, .codecks-feedback-status, .codecks-feedback-brand {
-    white-space: normal;
     margin-bottom: 10px;
 }
 
+.codecks-feedback-divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.49);
+    margin-bottom: 12px;
+}
+
+.codecks-feedback-help, .codecks-feedback-status {
+    white-space: normal;
+    margin-top: 8px;
+    margin-bottom: 12px;
+}
+
+.codecks-feedback-caption {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: rgb(185, 190, 203);
+    margin-top: 8px;
+    margin-bottom: 6px;
+}
+
+.codecks-feedback-help {
+    color: rgb(151, 158, 175);
+}
+
+.codecks-feedback-privacy {
+    color: rgb(166, 139, 199);
+}
+
 .codecks-feedback-report {
-    min-height: 130px;
+    height: 172px;
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.codecks-feedback-email {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+.codecks-feedback-email > .unity-text-field__label {
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+.codecks-feedback-report .unity-text-field__input,
+.codecks-feedback-email .unity-text-field__input,
+.codecks-feedback-severity .unity-base-popup-field__input {
+    background-color: rgb(87, 92, 111);
+    color: white;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 0;
+    border-right-width: 0;
+    padding: 10px;
+}
+
+.codecks-feedback-report .unity-text-field__input {
+    white-space: normal;
 }
 
 .codecks-feedback-actions {
     flex-direction: row;
-    justify-content: flex-end;
-    margin-top: 12px;
+    justify-content: space-between;
+    margin-top: 0;
+}
+
+.codecks-feedback-send, .codecks-feedback-cancel {
+    background-color: rgb(151, 158, 175);
+    color: white;
+    width: 120px;
+    height: 40px;
+    font-size: 16px;
+}
+
+.codecks-feedback-send {
+    background-color: rgb(125, 93, 169);
+    -unity-font-style: bold;
 }
 
 .codecks-feedback-cancel {
-    margin-left: 8px;
+    background-color: rgba(0, 0, 0, 0);
+    border-top-color: rgb(151, 158, 175);
+    border-bottom-color: rgb(151, 158, 175);
+    border-left-color: rgb(151, 158, 175);
+    border-right-color: rgb(151, 158, 175);
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-width: 2px;
+    border-right-width: 2px;
 }
 
 .codecks-feedback-brand {
-    color: rgb(90, 90, 90);
-    font-size: 12px;
-    -unity-text-align: middle-center;
-    margin-top: 14px;
-    margin-bottom: 0;
+    background-image: url("powered-by-codecks.png");
+    -unity-background-scale-mode: scale-to-fit;
+    height: 47px;
+    margin-top: 8px;
+    margin-bottom: 8px;
 }

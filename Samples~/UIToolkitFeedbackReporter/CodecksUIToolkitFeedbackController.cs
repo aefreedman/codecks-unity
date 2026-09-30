@@ -102,6 +102,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (!ValidateRequiredElements())
                 return;
 
+            severityField.formatSelectedValueCallback = FormatSeverity;
+            severityField.formatListItemCallback = FormatSeverity;
             launcherButton.clicked += ShowCodecksForm;
             sendButton.clicked += SendReport;
             cancelButton.clicked += HideCodecksForm;
@@ -186,7 +188,14 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             {
                 Debug.LogWarning("Codecks UI Toolkit report submission failed: " + result, this);
                 submissionInFlight = false;
-                statusLabel.text = "Report could not be sent. Please try again.";
+                // The backend only reaches attachment errors after creating the card.
+                // Do not imply that retrying this partial failure cannot create a duplicate.
+                bool attachmentFailed = result != null &&
+                    (result.StartsWith("error uploading file ", StringComparison.Ordinal) ||
+                     result.Contains("Codecks attachment upload"));
+                statusLabel.text = attachmentFailed
+                    ? "Report created, but the screenshot upload failed. Retrying sends a new report."
+                    : "Report could not be sent. Please try again.";
                 sendButton.SetEnabled(true);
                 return;
             }
@@ -295,6 +304,17 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
         private bool IsCurrentSession(int activeSession)
         {
             return isActiveAndEnabled && activeSession == session;
+        }
+
+        private static string FormatSeverity(string severity)
+        {
+            switch (severity)
+            {
+                case "Low": return "Minor - Typos, visual glitches, missing sound or animation";
+                case "High": return "Major - Exploits, unreadable text, major balance issues, broken abilities";
+                case "Critical": return "Critical - I am unable to continue playing!";
+                default: return "Feedback - I just have opinions about something";
+            }
         }
 
         private static CodecksCardCreator.CodecksSeverity MapSeverity(string severity)

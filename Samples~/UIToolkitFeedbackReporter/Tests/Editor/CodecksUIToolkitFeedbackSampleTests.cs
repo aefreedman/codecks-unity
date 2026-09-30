@@ -109,6 +109,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             var renderer = host.GetComponent<PanelRenderer>();
 
             Assert.That(scene.IsValid(), Is.True);
+            Assert.That(Camera.main, Is.Not.Null, "Standalone scene must include a rendering camera.");
+            Assert.That(Camera.main.clearFlags, Is.EqualTo(CameraClearFlags.SolidColor));
             Assert.That(renderer, Is.Not.Null);
             Assert.That(renderer.visualTreeAsset, Is.Not.Null);
             Assert.That(renderer.panelSettings, Is.Not.Null);
