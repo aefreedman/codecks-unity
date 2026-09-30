@@ -79,11 +79,15 @@ namespace Codecks.Tests.PlayMode
                 statusHost.transform.SetParent(formHost.transform, false);
                 form.statusText = statusHost.GetComponent<TextMeshProUGUI>();
                 form.statusSent = "Sent";
+                form.textArea = CreateInput(formHost.transform, "Report");
+                formHost.SetActive(false);
+                form.ShowCodecksFormWithoutScreenshot();
+                int session = (int)typeof(CodecksCardCreatorForm).GetField("session", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(form);
 
                 Time.timeScale = 0f;
                 typeof(CodecksCardCreatorForm)
                     .GetMethod("HandleSubmissionResult", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Invoke(form, new object[] { 0, true, "card" });
+                    .Invoke(form, new object[] { session, true, "card" });
                 yield return new WaitForSecondsRealtime(1.1f);
 
                 Assert.That(formHost.activeSelf, Is.False);

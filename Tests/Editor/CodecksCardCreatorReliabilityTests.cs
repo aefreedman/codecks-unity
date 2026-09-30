@@ -138,14 +138,16 @@ namespace Codecks.Tests.Editor
             Assert.That(error, Is.EqualTo("Codecks returned invalid upload instructions."));
         }
 
-        [Test]
+        [Test, Category("CodecksModalLifecycle")]
         public void Form_StaleSubmissionCallbacks_DoNotChangeNewSessionState()
         {
             var gameObject = new GameObject("Codecks form lifecycle test");
             try
             {
                 var form = gameObject.AddComponent<CodecksCardCreatorForm>();
-                SetPrivate(form, "session", 2);
+                var lifecycle = GetPrivate<CodecksFormLifecycle>(form, "lifecycle");
+                lifecycle.Begin(current => SetPrivate(form, "session", current), () => null, form.HideCodecksForm);
+                lifecycle.Begin(current => SetPrivate(form, "session", current), () => null, form.HideCodecksForm);
                 SetPrivate(form, "submissionInFlight", true);
 
                 InvokePrivate(form, "HandleSubmissionResult", 1, true, "late success");
@@ -160,19 +162,20 @@ namespace Codecks.Tests.Editor
             }
         }
 
-        [Test]
+        [Test, Category("CodecksModalLifecycle")]
         public void Form_OnDisable_InvalidatesPendingSubmission()
         {
             var gameObject = new GameObject("Codecks form lifecycle test");
             try
             {
                 var form = gameObject.AddComponent<CodecksCardCreatorForm>();
-                SetPrivate(form, "session", 4);
+                var lifecycle = GetPrivate<CodecksFormLifecycle>(form, "lifecycle");
+                lifecycle.Begin(current => SetPrivate(form, "session", current), () => null, form.HideCodecksForm);
                 SetPrivate(form, "submissionInFlight", true);
 
                 InvokePrivate(form, "OnDisable");
 
-                Assert.That(GetPrivate<int>(form, "session"), Is.EqualTo(5));
+                Assert.That(GetPrivate<int>(form, "session"), Is.EqualTo(2));
                 Assert.That(GetPrivate<bool>(form, "submissionInFlight"), Is.False);
             }
             finally

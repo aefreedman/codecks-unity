@@ -32,10 +32,29 @@ namespace Codecks.Runtime
         private CodecksCardCreator.CodecksFileType queuedScreenshotType;
         private int session;
         private bool submissionInFlight;
+        private bool awaitingSubmission;
+        private readonly CodecksFormLifecycle lifecycle = new CodecksFormLifecycle();
+        private bool destroying;
+        private bool abortingPendingOpening;
+        private CodecksPendingOpening pendingOpening;
 
-        private void OnDisable()
+        public CodecksFormState State => lifecycle.State;
+        public event Action<CodecksFormState> StateChanged
         {
-            InvalidateSession();
+            add => lifecycle.StateChanged += value;
+            remove => lifecycle.StateChanged -= value;
+        }
+        /// <summary>Optional caller modal ownership. Assigned in code; null means no ownership.</summary>
+        public Func<IDisposable> AcquireScope { get; set; }
+        /// <summary>Current session only; requests dispatched by closed sessions can still complete.</summary>
+        public bool IsSubmitting => awaitingSubmission;
+
+        private void OnDisable() => CloseSession(true);
+
+        private void OnDestroy()
+        {
+            destroying = true;
+            CloseSession(false);
         }
 
         /// <summary>
@@ -44,22 +63,45 @@ namespace Codecks.Runtime
         public void ShowCodecksForm()
         {
             // A second request while visible would capture the feedback UI into its own attachment.
-            if (gameObject.activeInHierarchy)
+            if (destroying || !enabled || abortingPendingOpening || gameObject.activeInHierarchy || State != CodecksFormState.Closed)
                 return;
 
-            InvalidateSession();
-            cardCreator.StartCoroutine(ShowCodecksFormCoroutine(session));
+            int opening = BeginSession();
+            if (!IsCurrentSession(opening)) return;
+            if (cardCreator == null || !cardCreator.isActiveAndEnabled) { HideCodecksForm(); return; }
+            var captureHost = cardCreator;
+            pendingOpening = captureHost.gameObject.AddComponent<CodecksPendingOpening>();
+            pendingOpening.Initialize(
+                () => this != null && enabled && !destroying && captureHost != null && captureHost.isActiveAndEnabled,
+                () =>
+                {
+                    if (!lifecycle.IsCurrent(opening)) return;
+                    abortingPendingOpening = true;
+                    try { CloseSession(true); }
+                    finally { abortingPendingOpening = false; }
+                });
+            captureHost.StartCoroutine(ShowCodecksFormCoroutine(opening));
         }
 
         private IEnumerator ShowCodecksFormCoroutine(int activeSession)
         {
             yield return new WaitForEndOfFrame();
             if (!IsCurrentSession(activeSession))
+            {
+                if (lifecycle.IsCurrent(activeSession)) CloseSession(false);
                 yield break;
+            }
 
-            byte[] screenshot = CaptureScreenshot();
+            byte[] screenshot;
+            try { screenshot = CaptureScreenshot(); }
+            catch (Exception)
+            {
+                if (IsCurrentSession(activeSession)) HideCodecksForm();
+                Debug.LogWarning("Codecks report capture override threw; opening was aborted.");
+                yield break;
+            }
             if (IsCurrentSession(activeSession))
-                OpenForm(screenshot, DefaultScreenshotFileType);
+                OpenForm(activeSession, screenshot, DefaultScreenshotFileType);
         }
 
         /// <summary>Opens immediately with caller-owned encoded JPG or PNG bytes, without capture or an end-of-frame wait.</summary>
@@ -69,26 +111,33 @@ namespace Codecks.Runtime
             if (screenshot.Length == 0) throw new ArgumentException("Screenshot bytes must not be empty.", nameof(screenshot));
             if (fileType != CodecksCardCreator.CodecksFileType.JPG && fileType != CodecksCardCreator.CodecksFileType.PNG)
                 throw new ArgumentOutOfRangeException(nameof(fileType), "Screenshots must be encoded as JPG or PNG.");
-            InvalidateSession();
-            OpenForm(screenshot, fileType);
+            if (destroying || !enabled) return;
+            int opening = BeginSession();
+            if (IsCurrentSession(opening)) OpenForm(opening, screenshot, fileType);
         }
 
         /// <summary>Opens immediately without a screenshot, capture, or an end-of-frame wait.</summary>
         public void ShowCodecksFormWithoutScreenshot()
         {
-            InvalidateSession();
-            OpenForm(null, DefaultScreenshotFileType);
+            if (destroying || !enabled) return;
+            int opening = BeginSession();
+            if (IsCurrentSession(opening)) OpenForm(opening, null, DefaultScreenshotFileType);
         }
 
-        private void OpenForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        private void OpenForm(int opening, byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
         {
+            if (textArea == null || sendButton == null)
+            { HideCodecksForm(); return; }
             queuedScreenshot = screenshot;
             queuedScreenshotType = fileType;
-            textArea.text = "";
-            submissionInFlight = false;
+            textArea.SetTextWithoutNotify("");
             sendButton.interactable = true;
             if (statusText != null) statusText.text = string.Empty;
             gameObject.SetActive(true);
+            if (!IsCurrentSession(opening)) return;
+            if (!gameObject.activeInHierarchy) { HideCodecksForm(); return; }
+            StopPendingOpening();
+            lifecycle.Open(opening);
         }
 
         private static CodecksCardCreator.CodecksFileType DefaultScreenshotFileType =>
@@ -136,8 +185,8 @@ namespace Codecks.Runtime
         /// </summary>
         public void HideCodecksForm()
         {
-            InvalidateSession();
-            gameObject.SetActive(false);
+            if (State == CodecksFormState.Closed) { if (this != null) gameObject.SetActive(false); return; }
+            CloseSession(true);
         }
 
         private IEnumerator HideCodecksFormWithDelayCoroutine(int activeSession)
@@ -152,7 +201,7 @@ namespace Codecks.Runtime
         /// </summary>
         public void OnButtonSend()
         {
-            if (submissionInFlight)
+            if (State != CodecksFormState.Open || submissionInFlight)
                 return;
 
             if (textArea.text.Length < 10)
@@ -161,7 +210,9 @@ namespace Codecks.Runtime
                 return;
             }
 
+            int activeSession = session;
             string reportText = $"{textArea.text}\n\n{GetMetaText()}";
+            if (!IsCurrentSession(activeSession) || State != CodecksFormState.Open || submissionInFlight) return;
             var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>();
             if (queuedScreenshot != null)
             {
@@ -169,8 +220,8 @@ namespace Codecks.Runtime
                 files[fileName] = (queuedScreenshot, queuedScreenshotType);
             }
 
-            int activeSession = session;
             submissionInFlight = true;
+            awaitingSubmission = true;
             statusText.text = statusSending;
             sendButton.interactable = false;
 
@@ -187,6 +238,7 @@ namespace Codecks.Runtime
             if (!IsCurrentSession(activeSession) || !gameObject.activeInHierarchy)
                 return;
 
+            awaitingSubmission = false;
             if (success)
             {
                 statusText.text = statusSent;
@@ -201,17 +253,41 @@ namespace Codecks.Runtime
             statusText.text = statusError;
         }
 
-        private void InvalidateSession()
+        private int BeginSession()
         {
-            session++;
+            int opening = lifecycle.Begin(ResetSession,
+                () => this != null && !destroying && enabled ? AcquireScope?.Invoke() : null, HideCodecksForm);
+            if (lifecycle.IsCurrent(opening) && (this == null || destroying || !enabled)) CloseSession(true);
+            return opening;
+        }
+
+        private void ResetSession(int current)
+        {
+            StopPendingOpening();
+            session = current;
             submissionInFlight = false;
+            awaitingSubmission = false;
             queuedScreenshot = null;
         }
 
-        private bool IsCurrentSession(int activeSession)
+        private void StopPendingOpening()
         {
-            return activeSession == session;
+            var guard = pendingOpening;
+            pendingOpening = null;
+            if (guard != null) guard.Disarm();
         }
+
+        private void CloseSession(bool hide)
+        {
+            lifecycle.Close(current =>
+            {
+                ResetSession(current);
+                if (hide && this != null) gameObject.SetActive(false);
+            });
+        }
+
+        private bool IsCurrentSession(int activeSession) =>
+            this != null && !destroying && enabled && lifecycle.IsCurrent(activeSession);
 
         /// <summary>
         /// Called when the Cancel button is clicked.

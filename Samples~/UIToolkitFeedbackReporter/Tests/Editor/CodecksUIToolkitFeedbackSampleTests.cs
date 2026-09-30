@@ -11,7 +11,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
 {
     public class CodecksUIToolkitFeedbackSampleTests
     {
-        [Test]
+        [Test, Category("CodecksModalLifecycle")]
         public void OnDisable_InvalidatesPendingSessionAndSubmission()
         {
             var host = new GameObject("Codecks lifecycle test");
@@ -19,14 +19,14 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             {
                 host.AddComponent<PanelRenderer>();
                 var controller = host.AddComponent<CodecksUIToolkitFeedbackController>();
-                SetPrivate(controller, "session", 7);
-                SetPrivate(controller, "overlayOpen", true);
+                var lifecycle = GetPrivate<Codecks.Runtime.CodecksFormLifecycle>(controller, "lifecycle");
+                lifecycle.Begin(current => SetPrivate(controller, "session", current), () => null, controller.HideCodecksForm);
                 SetPrivate(controller, "submissionInFlight", true);
 
                 InvokePrivate(controller, "OnDisable");
 
-                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(8));
-                Assert.That(GetPrivate<bool>(controller, "overlayOpen"), Is.False);
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(2));
+                Assert.That(controller.State, Is.EqualTo(Codecks.Runtime.CodecksFormState.Closed));
                 Assert.That(GetPrivate<bool>(controller, "submissionInFlight"), Is.False);
             }
             finally
@@ -35,7 +35,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             }
         }
 
-        [Test]
+        [Test, Category("CodecksModalLifecycle")]
         public void ShowCodecksForm_WhenAlreadyOpen_DoesNotStartAnotherCaptureSession()
         {
             var host = new GameObject("Codecks lifecycle test");
@@ -47,12 +47,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 SetPrivate(controller, "root", new VisualElement());
                 SetPrivate(controller, "overlay", new VisualElement());
                 SetPrivate(controller, "cardCreator", creator);
-                SetPrivate(controller, "overlayOpen", true);
-                SetPrivate(controller, "session", 3);
+                var lifecycle = GetPrivate<Codecks.Runtime.CodecksFormLifecycle>(controller, "lifecycle");
+                int opened = lifecycle.Begin(current => SetPrivate(controller, "session", current), () => null, controller.HideCodecksForm);
+                lifecycle.Open(opened);
 
                 controller.ShowCodecksForm();
 
-                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(3));
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(opened));
                 Assert.That(GetPrivate<object>(controller, "showCoroutine"), Is.Null);
             }
             finally
@@ -61,7 +62,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             }
         }
 
-        [Test]
+        [Test, Category("CodecksModalLifecycle")]
         public void NullRootReload_DetachesOldBindings_AndValidReloadRecovers()
         {
             var host = new GameObject("Codecks reload test");
@@ -73,7 +74,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 var oldLauncher = new Button();
                 SetPrivate(controller, "root", new VisualElement());
                 SetPrivate(controller, "launcherButton", oldLauncher);
-                SetPrivate(controller, "session", 4);
+                var lifecycle = GetPrivate<Codecks.Runtime.CodecksFormLifecycle>(controller, "lifecycle");
+                lifecycle.Begin(current => SetPrivate(controller, "session", current), () => null, controller.HideCodecksForm);
                 oldLauncher.clicked += controller.ShowCodecksForm;
 
                 LogAssert.Expect(LogType.Error, "Codecks UI Toolkit feedback reporter received an empty Panel Renderer root.");
@@ -82,7 +84,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 Assert.That(GetPrivate<object>(controller, "root"), Is.Null);
                 Assert.That(GetPrivate<object>(controller, "launcherButton"), Is.Null);
                 oldLauncher.SendEvent(new ClickEvent());
-                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(5));
+                Assert.That(GetPrivate<int>(controller, "session"), Is.EqualTo(2));
 
                 var validRoot = CreateRequiredRoot();
                 SetPrivate(controller, "cardCreator", creator);

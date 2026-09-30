@@ -189,12 +189,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 host.AddComponent<PanelRenderer>();
                 var controller = host.AddComponent<CodecksUIToolkitFeedbackController>();
                 Bind(controller, creator, CreateRequiredRoot(), 1);
-                GetPrivate<VisualElement>(controller, "overlay").style.display = DisplayStyle.Flex;
+                controller.ShowCodecksFormWithoutScreenshot();
+                int session = GetPrivate<int>(controller, "session");
 
                 Time.timeScale = 0f;
                 typeof(CodecksUIToolkitFeedbackController)
                     .GetMethod("HandleSubmissionResult", BindingFlags.Instance | BindingFlags.NonPublic)
-                    .Invoke(controller, new object[] { 1, true, "card" });
+                    .Invoke(controller, new object[] { session, true, "card" });
                 yield return new WaitForSecondsRealtime(1.1f);
 
                 Assert.That(GetPrivate<VisualElement>(controller, "overlay").style.display.value, Is.EqualTo(DisplayStyle.None));
