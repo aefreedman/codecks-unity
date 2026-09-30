@@ -10,20 +10,20 @@ This package provides uGUI and runtime UI Toolkit feedback forms backed by `Code
 2. In Unity, open **Window > Package Manager**, select **Add package from git URL**, and enter:
 
    ```text
-   https://github.com/aefreedman/codecks-unity.git
+   https://github.com/aefreedman/codecks-unity.git#v0.1.0
    ```
 
 3. Open the package's **Samples** tab and import one or both samples:
    - **Feedback Reporter (uGUI)** for the existing Canvas/TMP implementation.
    - **Feedback Reporter (UI Toolkit)** for the Panel Renderer implementation.
 
-The package is currently `0.1.0-pre.1`; no release tag has been approved. Do not treat an untagged branch URL as a stable release. After release approval and publication, install the approved pinned tag using the form `https://github.com/aefreedman/codecks-unity.git#v<package-version>`.
+Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.1.0` tag; avoid untagged branches for stable dependencies.
 
 ## Choose an implementation
 
 ### uGUI
 
-The uGUI sample contains `CodecksSampleScene`, a Canvas form, and TextMesh Pro fields. After importing it, configure the shared report settings asset described below; no scene token assignment is needed. If TMP text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**; the sample uses TMP's standard Liberation Sans asset.
+The uGUI sample contains `CodecksSampleScene`, a Canvas form, and TextMesh Pro fields. After importing it, run the setup action with its scene closed and configure the assigned shared settings asset as described below; do not enter tokens on scene components. If TMP text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**; the sample uses TMP's standard Liberation Sans asset.
 
 The sample EventSystem uses `StandaloneInputModule`, suitable for the legacy Input Manager or **Active Input Handling: Both**. In a new-Input-System-only project, replace it with `InputSystemUIInputModule`, configure that module's UI actions, and do not enable both modules on one EventSystem. See the [uGUI sample guide](Samples~/FeedbackReporter/README.md) for metadata customization and setup details.
 

@@ -1,45 +1,33 @@
 # Changelog
 
-All notable changes to this independent UPM fork are documented here.
+All notable changes to this independent UPM fork are documented here. Releases use matching package versions and `v<version>` Git tags. Version 0.x APIs may change between minor releases; migration guidance accompanies breaking changes.
 
-## [Unreleased]
-
-### Changed
-
-- Reporters now require an explicit `CodecksSettings` reference. Automatic Resources lookup and legacy token-file/component fallbacks are removed; hidden obsolete token/endpoint members remain only for migration compatibility and cannot configure requests.
-- **Tools > Codecks > Set Up Imported Samples** creates/reuses the default settings asset and wires missing references in closed standard imported sample scenes. It preserves configured assets/references and skips open or non-sample scenes.
+## 0.1.0
 
 ### Added
 
-- Symmetrical uGUI/Toolkit immediate opening with caller-owned JPG/PNG bytes or no screenshot; existing no-arg capture/UnityEvent bindings remain intact.
-- Overridable uGUI default screenshot capture matching the existing Toolkit hook; existing metadata hooks preserved. Toolkit's sample launcher is optional for external menus/hotkeys.
-- Shared `CodecksSettings` ScriptableObject configuration for both forms.
-- **Tools > Codecks > Create or Select Report Settings** creates/selects the default asset without overwriting existing configuration.
+- UPM packaging for Unity 6000.5 and later, with independently importable uGUI and Panel Renderer UI Toolkit feedback samples.
+- Shared `CodecksSettings` configuration and Editor actions to create/select settings and wire missing references in closed standard imported sample scenes. Existing configuration and references are preserved.
+- Matching form APIs to open with caller-owned JPG/PNG bytes or without a screenshot, bypassing default capture. Existing no-argument capture and UnityEvent bindings remain supported.
+- Overridable screenshot capture and metadata hooks; optional Toolkit launcher for project-owned menus and hotkeys.
+- Request validation, bounded timeouts, safe diagnostics, once-only completion and request cleanup.
+- Consumer setup, styling, embedding, customization and migration documentation.
+
+### Changed
+
+- Reporters require an explicit `CodecksSettings` reference. Automatic Resources lookup and legacy token-file/component fallbacks are removed. Hidden obsolete token/endpoint fields remain for source/serialized compatibility but cannot configure requests.
+- Installation uses Package Manager rather than copying plugin folders. Original uGUI runtime names and script GUIDs are preserved.
 
 ### Fixed
 
-- Made Toolkit captions/help/privacy and inherited form text white against dark form backgrounds.
-- Preserved the Toolkit logo's source aspect ratio by disabling power-of-two rescaling during import and using bounded, centered contain sizing.
-- Included a rendering camera in the standalone UI Toolkit sample so screenshots contain the game background without manual scene setup.
-- Matched the UI Toolkit form's layout, copy and colors more closely to the uGUI sample, with scrollable controls for small windows and the actual Powered by Codecks image beside the form.
-- Distinguished card creation from attachment upload failure in the UI Toolkit status; retrying an attachment failure can create another report.
-
-## 0.1.0-pre.1 (unreleased prerelease)
-
-### Added
-
-- UPM package metadata targeting Unity 6000.5 or later.
-- Independently importable uGUI and runtime UI Toolkit feedback reporter samples.
-- A Panel Renderer-based UI Toolkit template with a sample-owned runtime theme and reload-safe bindings.
-- Request validation, bounded timeouts, safe error handling and request cleanup.
-
-### Changed
-
-- Replaced copied-folder installation guidance with Package Manager Git installation and sample import guidance.
-- Documented consumer-owned customization hooks for uGUI metadata and UI Toolkit metadata/styling.
-- Preserved legacy uGUI runtime public names and script GUIDs for migration.
+- Toolkit binding recovery after renderer, source asset or Panel Settings changes; stale-session isolation during reopen and delayed completion.
+- Screenshot capture before the feedback overlay, with report-only fallback when default capture is unavailable.
+- Toolkit camera, dark/purple layout, white form text, small-window scrolling and visible Powered by Codecks branding with preserved logo aspect ratio.
+- Partial attachment failures are distinguished from successful card creation; retry guidance warns that another report may be created.
 
 ### Known limits
 
-- Windows x86-64 Mono is the validated standalone target. IL2CPP and other targets/backends are unvalidated.
-- Screenshot capture is optional: a capture failure logs a warning and sends the report without an attachment.
+- Windows x86-64 Mono is the validated player target. IL2CPP and other player targets/backends are unvalidated. Minimum-editor evidence covers compilation/import, not all runtime behavior.
+- Default screenshot capture requires a graphics-capable runtime. Capture overrides follow the documented platform encoding contract; caller-supplied bytes must match the explicit JPG/PNG type.
+- Settings assets in client builds do not keep report tokens secret. Use scoped revocable tokens and keep configured assets out of source control.
+- Reopening a form invalidates old UI callbacks, not already-dispatched backend requests.

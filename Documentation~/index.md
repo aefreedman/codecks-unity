@@ -10,16 +10,16 @@ The package requires Unity 6000.5 or later and Git on the machine that resolves 
 
 1. Open **Window > Package Manager**.
 2. Select **Add package from git URL**.
-3. Enter `https://github.com/aefreedman/codecks-unity.git`.
+3. Enter `https://github.com/aefreedman/codecks-unity.git#v0.1.0`.
 4. Select the package, open **Samples**, and import the implementation you need.
 
-The package is currently prerelease (`0.1.0-pre.1`) and does not have an approved release tag. After a tag is approved and published, use `https://github.com/aefreedman/codecks-unity.git#v<package-version>` to pin a release. Do not use an untagged branch as a stable dependency.
+Versioned releases use matching `v<package-version>` Git tags. The installation URL above requires the published `v0.1.0` tag. Do not use an untagged branch as a stable dependency.
 
 ## Samples
 
 ### Feedback Reporter (uGUI)
 
-Import **Feedback Reporter (uGUI)**, then open `CodecksSampleScene`. It uses Canvas, the existing `CodecksCardCreatorForm`, and TextMesh Pro. Configure the shared report settings asset below before entering Play mode; no component/scene token wiring is required.
+Import **Feedback Reporter (uGUI)**, run the sample setup action described below while its scene is closed, then open `CodecksSampleScene`. It uses Canvas, `CodecksCardCreatorForm`, and TextMesh Pro. Configure the assigned shared report settings asset before entering Play mode; do not enter tokens on scene components.
 
 If text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**. The sample uses the standard TMP Liberation Sans font asset. Its EventSystem uses `StandaloneInputModule`, which supports the legacy Input Manager or **Active Input Handling: Both**. New-Input-System-only projects must replace that module with `InputSystemUIInputModule`, configure its UI actions, and keep only one input module enabled.
 
