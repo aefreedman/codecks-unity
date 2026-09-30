@@ -28,6 +28,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
         private Button cancelButton;
         private Label statusLabel;
         private byte[] queuedScreenshot;
+        private CodecksCardCreator.CodecksFileType queuedScreenshotType;
         private int boundVersion = -1;
         private int session;
         private bool overlayOpen;
@@ -104,7 +105,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
             severityField.formatSelectedValueCallback = FormatSeverity;
             severityField.formatListItemCallback = FormatSeverity;
-            launcherButton.clicked += ShowCodecksForm;
+            if (launcherButton != null) launcherButton.clicked += ShowCodecksForm;
             sendButton.clicked += SendReport;
             cancelButton.clicked += HideCodecksForm;
             overlay.style.display = DisplayStyle.None;
@@ -121,6 +122,26 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             showCoroutine = StartCoroutine(ShowAfterScreenshotCoroutine(session));
         }
 
+        /// <summary>Opens immediately with caller-owned encoded JPG or PNG bytes, without capture or an end-of-frame wait.</summary>
+        public void ShowCodecksForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        {
+            if (screenshot == null) throw new ArgumentNullException(nameof(screenshot));
+            if (screenshot.Length == 0) throw new ArgumentException("Screenshot bytes must not be empty.", nameof(screenshot));
+            if (fileType != CodecksCardCreator.CodecksFileType.JPG && fileType != CodecksCardCreator.CodecksFileType.PNG)
+                throw new ArgumentOutOfRangeException(nameof(fileType), "Screenshots must be encoded as JPG or PNG.");
+            if (!IsBound()) return;
+            InvalidateSession();
+            OpenForm(screenshot, fileType);
+        }
+
+        /// <summary>Opens immediately without a screenshot, capture, or an end-of-frame wait.</summary>
+        public void ShowCodecksFormWithoutScreenshot()
+        {
+            if (!IsBound()) return;
+            InvalidateSession();
+            OpenForm(null, DefaultScreenshotFileType);
+        }
+
         /// <summary>Closes the report overlay without removing the Panel Renderer reload subscription.</summary>
         public void HideCodecksForm()
         {
@@ -135,17 +156,30 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (!IsCurrentSession(activeSession))
                 yield break;
 
-            queuedScreenshot = CaptureScreenshot();
+            byte[] screenshot = CaptureScreenshot();
             if (!IsCurrentSession(activeSession) || overlay == null)
                 yield break;
+            showCoroutine = null;
+            OpenForm(screenshot, DefaultScreenshotFileType);
+        }
 
+        private static CodecksCardCreator.CodecksFileType DefaultScreenshotFileType =>
+#if UNITY_STANDALONE
+            CodecksCardCreator.CodecksFileType.JPG;
+#else
+            CodecksCardCreator.CodecksFileType.PNG;
+#endif
+
+        private void OpenForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        {
+            queuedScreenshot = screenshot;
+            queuedScreenshotType = fileType;
             reportField.value = string.Empty;
             statusLabel.text = string.Empty;
             sendButton.SetEnabled(true);
             overlay.style.display = DisplayStyle.Flex;
             overlayOpen = true;
             reportField.Focus();
-            showCoroutine = null;
         }
 
         private void SendReport()
@@ -168,11 +202,8 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>();
             if (queuedScreenshot != null)
             {
-#if UNITY_STANDALONE
-                files["screenshot.jpg"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.JPG);
-#else
-                files["screenshot.png"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.PNG);
-#endif
+                string fileName = queuedScreenshotType == CodecksCardCreator.CodecksFileType.JPG ? "screenshot.jpg" : "screenshot.png";
+                files[fileName] = (queuedScreenshot, queuedScreenshotType);
             }
 
             cardCreator.CreateNewCard(report, files, MapSeverity(severityField.value), emailField.value,
@@ -211,7 +242,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
                 HideCodecksForm();
         }
 
-        /// <summary>Captures the frame before the feedback overlay becomes visible.</summary>
+        /// <summary>Captures before the overlay is visible. Overrides must return the default platform encoding (standalone JPG, otherwise PNG), or null.</summary>
         protected virtual byte[] CaptureScreenshot()
         {
             Texture2D screenshot = null;
@@ -244,11 +275,11 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
         private bool ValidateRequiredElements()
         {
-            if (overlay != null && launcherButton != null && reportField != null && severityField != null &&
+            if (overlay != null && reportField != null && severityField != null &&
                 emailField != null && sendButton != null && cancelButton != null && statusLabel != null && cardCreator != null)
                 return true;
 
-            Debug.LogError("Codecks UI Toolkit feedback reporter is not configured. Assign CodecksCardCreator and retain the named launcher, overlay, report, severity, email, send, cancel, and status elements from the sample UXML.", this);
+            Debug.LogError("Codecks UI Toolkit feedback reporter is not configured. Assign CodecksCardCreator and retain the named overlay, report, severity, email, send, cancel, and status elements (launcher is optional) from the sample UXML.", this);
             DetachBindings();
             return false;
         }

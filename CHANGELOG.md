@@ -11,6 +11,8 @@ All notable changes to this independent UPM fork are documented here.
 
 ### Added
 
+- Symmetrical uGUI/Toolkit immediate opening with caller-owned JPG/PNG bytes or no screenshot; existing no-arg capture/UnityEvent bindings remain intact.
+- Overridable uGUI default screenshot capture matching the existing Toolkit hook; existing metadata hooks preserved. Toolkit's sample launcher is optional for external menus/hotkeys.
 - Shared `CodecksSettings` ScriptableObject configuration for both forms.
 - **Tools > Codecks > Create or Select Report Settings** creates/selects the default asset without overwriting existing configuration.
 

@@ -16,9 +16,9 @@ When the launcher is selected, the controller waits through the current frame an
 
 ## Embed and restyle
 
-Copy the UXML, USS, controller, and branding asset into your own `Assets` folder so they remain consumer-owned across package updates. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject. Assign your copied UXML to **Visual Tree Asset** and your PanelSettings to **Panel Settings**, then assign the same `CodecksCardCreator` to the controller. The UXML named elements are required by the controller:
+Copy the UXML, USS, controller, and branding asset into your own `Assets` folder so they remain consumer-owned across package updates. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject. Assign your copied UXML to **Visual Tree Asset** and your PanelSettings to **Panel Settings**, then assign the same `CodecksCardCreator` to the controller. The UXML named elements below are required by the controller. The optional `codecks-feedback-launcher` button may be removed when your menu/hotkey calls the public API:
 
-- `codecks-feedback-launcher`, `codecks-feedback-overlay`
+- `codecks-feedback-overlay`
 - `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`
 - `codecks-feedback-send`, `codecks-feedback-cancel`, `codecks-feedback-status`
 
@@ -26,7 +26,23 @@ When embedding, use your game's existing camera; do not add the standalone sampl
 
 Restyle the documented `codecks-feedback-*` classes in your copied USS. If sharing a PanelSettings asset with another Panel Renderer, set intentional sort orders and ensure focus moves to the report field when opening; the controller does this for the supplied template. Keep the visible `codecks-feedback-brand` attribution when adapting the form.
 
-To add project data without changing the package cache, inherit from `CodecksUIToolkitFeedbackController` in your project and override `GetMetadata()`. The controller uses `CodecksCardCreator.CreateNewCard`, preserving its token, request, upload, and retryable error behavior. Success is shown only after card creation **and** attachment upload complete. An attachment failure can leave a real card on the service: the form explicitly warns that retrying creates another report. A connection error alone does not identify the remote service cause. Closing/reopening the form invalidates its UI session; an old completion will not overwrite the new form.
+To add project data without changing the package cache, inherit from `CodecksUIToolkitFeedbackController` in your project and override `GetMetadata()`. You may also override the existing `protected virtual byte[] CaptureScreenshot()` hook; it must return the default platform encoding (standalone JPG, otherwise PNG), or null. No-argument opening still waits for end-of-frame even with an override.
+
+## External opening / caller-owned screenshots
+
+Both this controller and uGUI `CodecksCardCreatorForm` expose the same opening API:
+
+```csharp
+reporter.ShowCodecksForm(); // Existing UnityEvent binding: default capture, then open.
+reporter.ShowCodecksForm(encodedPng, CodecksCardCreator.CodecksFileType.PNG);
+reporter.ShowCodecksFormWithoutScreenshot(); // Immediate: no capture and no attachment.
+```
+
+The supplied-image and no-image modes open immediately without waiting for end-of-frame and invalidate pending captures/old UI callbacks. They start a new form session, even if it was already open. JPG/PNG filenames and MIME types follow the explicit encoding, not the target platform. Null/empty bytes or another file type throw argument exceptions before opening; the caller is responsible for valid encoding (the controller does not decode it).
+
+Capture before your pause menu is shown, then pass the encoded bytes. Own/dispose your capture texture yourself; the controller retains but never modifies/disposes the byte array, so keep it unchanged while submission is using it. Default capture alone creates/destroys its temporary texture. Closing/reopening does not cancel a report already dispatched, but its late callback cannot overwrite the new session. Call after the enabled Panel Renderer has initialized bindings. Your own launcher/menu/hotkey can use these methods without a sample launcher element.
+
+The controller uses `CodecksCardCreator.CreateNewCard`, preserving its token, request, upload, and retryable error behavior. Success is shown only after card creation **and** attachment upload complete. An attachment failure can leave a real card on the service: the form explicitly warns that retrying creates another report. A connection error alone does not identify the remote service cause.
 
 ## Local regression checks
 

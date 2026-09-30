@@ -32,6 +32,20 @@ public sealed class ProjectFeedbackForm : CodecksCardCreatorForm
 }
 ```
 
-This keeps custom behavior durable across package updates. You can also use `CodecksCardCreator` directly when supplying a completely custom UI.
+This keeps custom behavior durable across package updates. You can also override `protected virtual byte[] CaptureScreenshot()`; return the default platform encoding (standalone JPG, otherwise PNG), or null. The no-argument opener still waits for end-of-frame with an override. Only the default capture implementation owns/destroys its temporary texture. `CodecksCardCreator` remains directly usable for completely custom UI.
+
+## Caller-controlled opening
+
+Both uGUI and Toolkit expose:
+
+```csharp
+form.ShowCodecksForm(); // Existing no-arg UnityEvent: capture, then open.
+form.ShowCodecksForm(encodedPng, CodecksCardCreator.CodecksFileType.PNG);
+form.ShowCodecksFormWithoutScreenshot(); // Immediate, no capture/attachment.
+```
+
+For pause-menu flows, capture/encode before displaying the menu and pass those bytes. Supplied-image and no-image openings skip default capture and the EOF wait, start a new session, and invalidate pending capture/old UI callbacks. JPG/PNG filenames and MIME types follow the supplied encoding. Null/empty bytes or unsupported file types throw argument exceptions before opening; data is not decoded automatically. Keep the caller-owned array unchanged during submission; the form never modifies/disposes it or any caller texture. Set up the ordinary UI/backend references first.
+
+Explicit opening can replace an already-visible form. Closing/reopening does not cancel dispatched requests, but their late callbacks cannot override the new session. Repeated default no-arg opening while visible remains a no-op.
 
 Keep the Powered by Codecks mark visible next to the form when adapting this sample.

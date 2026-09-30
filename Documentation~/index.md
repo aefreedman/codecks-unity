@@ -36,10 +36,58 @@ To embed the form in a project:
 1. Copy the UXML, USS, controller, and branding asset from the imported sample into `Assets`.
 2. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject.
 3. Assign the copied Visual Tree Asset and Panel Settings to the Panel Renderer, and the same `CodecksCardCreator` to the controller.
-4. Preserve the required UXML element names: `codecks-feedback-launcher`, `codecks-feedback-overlay`, `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`, `codecks-feedback-send`, `codecks-feedback-cancel`, and `codecks-feedback-status`.
+4. Preserve the required UXML element names: `codecks-feedback-overlay`, `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`, `codecks-feedback-send`, `codecks-feedback-cancel`, and `codecks-feedback-status`.
 5. Restyle the `codecks-feedback-*` classes in the copied USS. When several Panel Renderers share Panel Settings, choose explicit sort orders. The supplied controller focuses the report field on open.
 
-The controller registers a Panel Renderer reload callback and rebuilds bindings when its UI reloads. Keep that lifecycle if changing the source asset or Panel Settings. Add project metadata in a consumer-owned subclass by overriding `GetMetadata()`.
+The `codecks-feedback-launcher` button is optional: an external menu/hotkey may call the public opening API below. The controller registers a Panel Renderer reload callback and rebuilds bindings when its UI reloads. Keep that lifecycle if changing the source asset or Panel Settings. Add project metadata in a consumer-owned subclass by overriding `GetMetadata()`.
+
+## Consumer-controlled capture and opening
+
+Both `CodecksCardCreatorForm` and `CodecksUIToolkitFeedbackController` expose:
+
+```csharp
+void ShowCodecksForm(); // Preserved no-arg UnityEvent entry: EOF capture, then open.
+void ShowCodecksForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType);
+void ShowCodecksFormWithoutScreenshot();
+```
+
+The latter two open immediately, skip capture/EOF waiting, and start a new session that invalidates pending captures and old UI callbacks. JPG/PNG filename and MIME follow the explicit type regardless of platform. Null/empty bytes and unsupported types throw argument exceptions; valid JPG/PNG encoding is the caller's responsibility, not automatically decoded. The controller retains but does not modify/dispose caller bytes or textures; keep bytes unchanged during submission. Default capture owns only its own temporary texture. Explicit opening may replace a visible session; it does not cancel already-dispatched requests.
+
+In an existing menu component, `reporter` can be either form type. Capture before opening the pause menu, not after:
+
+```csharp
+IEnumerator OpenFeedbackBeforePauseMenu()
+{
+    yield return new WaitForEndOfFrame(); // Caller decides its capture timing.
+    var image = ScreenCapture.CaptureScreenshotAsTexture();
+    if (image == null)
+    {
+        pauseMenu.SetActive(true);
+        reporter.ShowCodecksFormWithoutScreenshot();
+        yield break;
+    }
+    byte[] png;
+    try { png = image.EncodeToPNG(); }
+    finally { Destroy(image); } // Caller owns this texture.
+    pauseMenu.SetActive(true);
+    reporter.ShowCodecksForm(png, CodecksCardCreator.CodecksFileType.PNG);
+}
+```
+
+For no-image reports from an existing menu/hotkey, call `reporter.ShowCodecksFormWithoutScreenshot()`. Toolkit binding no longer requires its sample launcher element, but the renderer/controller must be enabled and initialized before opening.
+
+Both forms support `protected virtual byte[] CaptureScreenshot()` for replacing default capture logic; preserve its platform encoding contract (standalone JPG, otherwise PNG), or return null. Its no-arg opener still waits for EOF; use explicit opening to bypass that wait or provide a different encoding. Metadata hooks remain `CodecksCardCreatorForm.GetMetaText()` and `CodecksUIToolkitFeedbackController.GetMetadata()`. For example:
+
+```csharp
+public sealed class ProjectFeedbackForm : CodecksCardCreatorForm
+{
+    protected override byte[] CaptureScreenshot() => null;
+    protected override string GetMetaText() => base.GetMetaText() + "Build channel: internal";
+}
+// Toolkit subclass uses the same CaptureScreenshot signature and overrides GetMetadata instead.
+```
+
+These are ordinary consumer-owned subclasses/public calls. `CodecksCardCreator.CreateNewCard` remains directly usable; no provider/service framework is required.
 
 ## Tokens, privacy, and security
 

@@ -3,7 +3,9 @@
     "rootNamespace": "Codecks.Samples.UIToolkitFeedbackReporter.Tests",
     "references": [
         "Codecks.UIToolkitFeedbackReporter.Sample",
-        "CodecksRuntime"
+        "CodecksRuntime",
+        "Unity.TextMeshPro",
+        "Unity.ugui"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

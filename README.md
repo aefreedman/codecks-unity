@@ -55,6 +55,8 @@ Do not edit files in PackageCache. Import a sample, copy the consumer-owned UI a
 - Override `CodecksCardCreatorForm.GetMetaText()` for uGUI.
 - Override `CodecksUIToolkitFeedbackController.GetMetadata()` for UI Toolkit.
 
+Both forms preserve `ShowCodecksForm()` for default capture/UnityEvents and add immediate `ShowCodecksForm(byte[], CodecksCardCreator.CodecksFileType)` (JPG/PNG) and `ShowCodecksFormWithoutScreenshot()`. Use a screenshot captured before opening a pause menu, or skip capture entirely. Both expose overridable `CaptureScreenshot()` alongside metadata hooks; Toolkit's sample launcher is optional for external menus/hotkeys. See the [consumer-controlled capture examples](Documentation~/index.md#consumer-controlled-capture-and-opening) for encoding/ownership and session rules.
+
 `CodecksCardCreator.CreateNewCard` is also available for a completely custom UI. Preserve the public component names, serialized references, and callback behavior when migrating an existing integration.
 
 ## Migration from the old folder install

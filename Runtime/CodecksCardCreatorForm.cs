@@ -29,6 +29,7 @@ namespace Codecks.Runtime
         public string statusError;
 
         private byte[] queuedScreenshot;
+        private CodecksCardCreator.CodecksFileType queuedScreenshotType;
         private int session;
         private bool submissionInFlight;
 
@@ -56,7 +57,50 @@ namespace Codecks.Runtime
             if (!IsCurrentSession(activeSession))
                 yield break;
 
-            queuedScreenshot = null;
+            byte[] screenshot = CaptureScreenshot();
+            if (IsCurrentSession(activeSession))
+                OpenForm(screenshot, DefaultScreenshotFileType);
+        }
+
+        /// <summary>Opens immediately with caller-owned encoded JPG or PNG bytes, without capture or an end-of-frame wait.</summary>
+        public void ShowCodecksForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        {
+            if (screenshot == null) throw new ArgumentNullException(nameof(screenshot));
+            if (screenshot.Length == 0) throw new ArgumentException("Screenshot bytes must not be empty.", nameof(screenshot));
+            if (fileType != CodecksCardCreator.CodecksFileType.JPG && fileType != CodecksCardCreator.CodecksFileType.PNG)
+                throw new ArgumentOutOfRangeException(nameof(fileType), "Screenshots must be encoded as JPG or PNG.");
+            InvalidateSession();
+            OpenForm(screenshot, fileType);
+        }
+
+        /// <summary>Opens immediately without a screenshot, capture, or an end-of-frame wait.</summary>
+        public void ShowCodecksFormWithoutScreenshot()
+        {
+            InvalidateSession();
+            OpenForm(null, DefaultScreenshotFileType);
+        }
+
+        private void OpenForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        {
+            queuedScreenshot = screenshot;
+            queuedScreenshotType = fileType;
+            textArea.text = "";
+            submissionInFlight = false;
+            sendButton.interactable = true;
+            if (statusText != null) statusText.text = string.Empty;
+            gameObject.SetActive(true);
+        }
+
+        private static CodecksCardCreator.CodecksFileType DefaultScreenshotFileType =>
+#if UNITY_STANDALONE
+            CodecksCardCreator.CodecksFileType.JPG;
+#else
+            CodecksCardCreator.CodecksFileType.PNG;
+#endif
+
+        /// <summary>Override to return the default platform encoding (standalone JPG, otherwise PNG), or null to omit capture.</summary>
+        protected virtual byte[] CaptureScreenshot()
+        {
             Texture2D screenshotTexture = null;
             try
             {
@@ -64,9 +108,9 @@ namespace Codecks.Runtime
                 if (screenshotTexture != null)
                 {
 #if UNITY_STANDALONE
-                    queuedScreenshot = screenshotTexture.EncodeToJPG();
+                    return screenshotTexture.EncodeToJPG();
 #else
-                    queuedScreenshot = screenshotTexture.EncodeToPNG();
+                    return screenshotTexture.EncodeToPNG();
 #endif
                 }
                 else
@@ -84,13 +128,7 @@ namespace Codecks.Runtime
                     Destroy(screenshotTexture);
             }
 
-            if (!IsCurrentSession(activeSession))
-                yield break;
-
-            textArea.text = "";
-            submissionInFlight = false;
-            sendButton.interactable = true;
-            gameObject.SetActive(true);
+            return null;
         }
 
         /// <summary>
@@ -127,11 +165,8 @@ namespace Codecks.Runtime
             var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>();
             if (queuedScreenshot != null)
             {
-#if UNITY_STANDALONE
-                files["screenshot.jpg"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.JPG);
-#else
-                files["screenshot.png"] = (queuedScreenshot, CodecksCardCreator.CodecksFileType.PNG);
-#endif
+                string fileName = queuedScreenshotType == CodecksCardCreator.CodecksFileType.JPG ? "screenshot.jpg" : "screenshot.png";
+                files[fileName] = (queuedScreenshot, queuedScreenshotType);
             }
 
             int activeSession = session;
