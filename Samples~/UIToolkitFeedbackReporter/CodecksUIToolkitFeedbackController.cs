@@ -123,6 +123,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (!ValidateRequiredElements())
                 return;
 
+            BindPointerBoundary(true);
             severityField.formatSelectedValueCallback = FormatSeverity;
             severityField.formatListItemCallback = FormatSeverity;
             if (launcherButton != null) launcherButton.clicked += ShowCodecksForm;
@@ -315,8 +316,55 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             return false;
         }
 
+        // Bubble only: descendants retain their target/default actions (including focus),
+        // while presentation ancestors do not treat modal input as their own commands.
+        private static void StopModalPointerEvent<T>(T evt) where T : EventBase<T>, new()
+        {
+            evt.StopPropagation();
+        }
+
+        private void BindPointerBoundary(bool bind)
+        {
+            if (overlay == null) return;
+            if (bind)
+            {
+                overlay.RegisterCallback<PointerDownEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerUpEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerMoveEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerCancelEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerOverEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerOutEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseDownEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseUpEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseMoveEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseOverEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseOutEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<ClickEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<WheelEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<ContextClickEvent>(StopModalPointerEvent);
+            }
+            else
+            {
+                overlay.UnregisterCallback<PointerDownEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerUpEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerMoveEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerCancelEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerOverEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerOutEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseDownEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseUpEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseMoveEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseOverEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseOutEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<ClickEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<WheelEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<ContextClickEvent>(StopModalPointerEvent);
+            }
+        }
+
         private void DetachBindings()
         {
+            BindPointerBoundary(false);
             if (launcherButton != null)
                 launcherButton.clicked -= ShowCodecksForm;
             if (sendButton != null)
