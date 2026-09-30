@@ -4,6 +4,8 @@ An independently maintained UPM fork of the [Codecks Unity plugin](https://githu
 
 This Markdown manual is the maintained consumer documentation. The former PDF is not a supported release artifact.
 
+This feature branch prepares **0.2.0 (unreleased)**. The published `v0.1.0` install below does not include the modal lifecycle or form-only template additions described here; no `v0.2.0` tag is claimed.
+
 ## Install through Package Manager
 
 The package requires Unity 6000.5 or later and Git on the machine that resolves packages.
@@ -33,9 +35,9 @@ The sample GameObject has a Panel Renderer, `CodecksCardCreator`, and `CodecksUI
 
 To embed the form in a project:
 
-1. Copy the UXML, USS, controller, and branding asset from the imported sample into `Assets`.
+1. In forthcoming 0.2.0, copy `CodecksFeedbackForm.uxml`, `CodecksFeedbackReporter.uss`, the controller, and branding asset from the imported sample into `Assets`. Copy `CodecksFeedbackReporter.uxml` too if retaining the standalone launcher; it composes the form through a relative template reference.
 2. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject.
-3. Assign the copied Visual Tree Asset and Panel Settings to the Panel Renderer, and the same `CodecksCardCreator` to the controller.
+3. Assign the copied form-only `CodecksFeedbackForm.uxml` (or standalone composition) and Panel Settings to the Panel Renderer, and the same `CodecksCardCreator` to the controller.
 4. Preserve the required UXML element names: `codecks-feedback-overlay`, `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`, `codecks-feedback-send`, `codecks-feedback-cancel`, and `codecks-feedback-status`.
 5. Restyle the `codecks-feedback-*` classes in the copied USS. When several Panel Renderers share Panel Settings, choose explicit sort orders. The supplied controller focuses the report field on open.
 
@@ -88,6 +90,42 @@ public sealed class ProjectFeedbackForm : CodecksCardCreatorForm
 ```
 
 These are ordinary consumer-owned subclasses/public calls. `CodecksCardCreator.CreateNewCard` remains directly usable; no provider/service framework is required.
+
+## Consumer-owned modal integration
+
+These APIs are **forthcoming 0.2.0**, not in the published `v0.1.0` install. Both `Codecks.Runtime.CodecksCardCreatorForm` and the imported `Codecks.Samples.UIToolkitFeedbackReporter.CodecksUIToolkitFeedbackController` expose:
+
+```csharp
+CodecksFormState State { get; } // Codecks.Runtime: Closed, Opening, Open
+event Action<CodecksFormState> StateChanged;
+Func<IDisposable> AcquireScope { get; set; } // Optional, assigned in code, not serialized
+bool IsSubmitting { get; } // Only this session's outstanding backend operation
+```
+
+Assign `AcquireScope` to your existing project modal coordinator's acquisition method (returning an independent `IDisposable` ownership token). Returning null means no ownership. The package has no pause, gameplay-lock, action-map or coordinator dependencies. Leave it unset for the standalone sample. Your scope decides which gameplay/presentation commands to suppress, how to preserve UI text/navigation input, and how to restore previous focus when its ownership ends. Do not disable the UI input needed by the form itself.
+
+### Ordering, ownership and reentrancy
+
+1. Opening invalidates old capture/result/dismissal tokens and resets session submission/image data. An active replacement retains its scope, even during scope acquisition.
+2. Set `Opening`, synchronously notify `StateChanged`, then invoke `AcquireScope`, then capture. An observer that closes first prevents acquisition. Default opening waits for end-of-frame with the overlay hidden; supplied/no-image opening skips capture and opens synchronously. An already-active no-argument opening is ignored; explicit opening replaces the session.
+3. Show the view, then set/notify `Open`. Toolkit focuses the report field before notifying `Open`. Reentrant close/replacement invalidates older work; it cannot resurrect the old UI or capture.
+4. Close invalidates the session, clears `IsSubmitting`/image data, detaches ownership and hides the UI (teardown also detaches bindings). Set/notify `Closed`, **then** dispose the detached scope exactly once. Disable/destroy/abort/reload use the same ownership cleanup. A `Closed` observer may reopen and acquire a new scope before the old token is disposed: the coordinator must release only that token, not unlock or refocus a newer modal. Prefer token-owned focus restoration after release, and restore only when that token's modal still owns the restoration decision. `Closed` is not a notification that scope disposal has already finished.
+
+State listeners are isolated: exceptions warn, and remaining listeners run only while that transition is current. Obsolete notifications stop after reentrancy. Acquisition exceptions warn and abort opening (including a nested replacement sharing that acquisition); an independent close/reopen owner survives an older failure. A scope returned after its owner closed is disposed immediately. Disposal exceptions warn without leaking package ownership or causing a second disposal. Throwing capture overrides abort opening; unavailable built-in capture instead opens without an image. Toolkit null-root/reload/renderer unavailability closes ownership before binding recovery. The uGUI pending-capture guard also releases ownership when a never-active form or its capture host is disabled/destroyed, by normal lifecycle/Update callbacks without depending on EOF. No callbacks can execute while the whole runtime is suspended.
+
+`IsSubmitting` is true only while the current session awaits its backend result; result success/failure, close or replacement makes it false. A successful send retains the separate once-only guard until dismissal/replacement even though `IsSubmitting` is false; a failed send permits retry. Closing/replacing does not cancel already-dispatched backend operations; stale completions cannot change the new session or release its scope. Do not treat false as proof that all network work has stopped.
+
+### Keyboard/gamepad and focus
+
+Route your project's commands through its coordinator while `Opening` or `Open`: feedback cancel/back calls `HideCodecksForm()`, not the underlying pause menu's back handler as well. Gate opening commands using `State`; use `StateChanged` to update your presentation. Preserve UI navigation, typing, submit/cancel bindings and your project's focus policy. The package does **not** poll raw Escape, switch action maps, change time scale or automatically restore caller focus. Scope acquisition happens before EOF, so if your scope shows a pause/menu overlay it can enter default capture: capture first using the supplied-image API above, or make the scope input-only until after capture. Toolkit's report-field focus does not establish a project's gamepad navigation policy.
+
+### Form-only embedding and pointer boundary
+
+Use `CodecksFeedbackForm.uxml` directly as the Panel Renderer Visual Tree Asset, or compose it once inside a full-screen host template. Keep its relative shared USS/branding dependencies beside it, the required named elements, and a single controller binding root per form. It contains no launcher and opens through the same public APIs. The standalone `CodecksFeedbackReporter.uxml` composes that exact form plus its optional launcher; do not copy/paste a second form. Retain the visible Powered by Codecks image beside the dialog, including when restyling.
+
+Outer form/standalone/template-instance layout wrappers use `PickingMode.Ignore`. The hidden overlay does not intercept picking; the open overlay uses `PickingMode.Position` and fills its host, including empty space outside the scrollable dialog. Size an embedded host to the whole presentation area that must be blocked. Choose panel sort order intentionally; this is a boundary within that panel, not a global input lock across other panels, uGUI raycasters or gameplay.
+
+The controller registers **bubble-phase** boundaries on the overlay for pointer down/up/move/cancel/over/out, mouse down/up/move/over/out, click, context-click and wheel. It calls `StopPropagation`, not `PreventDefault` or `StopImmediatePropagation`: child field/button handlers, scrolling, default focus and other handlers on the overlay still work. Bindings are removed on teardown/reload. Ancestor bubble handlers do not receive these modal events. Ancestor **trickle-down** handlers have already run and cannot be undone; they must consult your coordinator before issuing presentation commands. Detached dropdown menus and unrelated panels are outside the overlay's ancestry and require the same caller-owned command gate. Keyboard/gamepad commands are not swallowed by this pointer boundary.
 
 ## Tokens, privacy, and security
 
