@@ -10,18 +10,6 @@ namespace Codecks.Tests.Editor
 {
     public class CodecksCardCreatorReliabilityTests
     {
-        private Func<CodecksSettings> originalSettingsLoader;
-
-        [SetUp]
-        public void IsolateConfiguration()
-        {
-            originalSettingsLoader = CodecksCardCreator.SettingsLoader;
-            CodecksCardCreator.SettingsLoader = () => null;
-        }
-
-        [TearDown]
-        public void RestoreConfiguration() => CodecksCardCreator.SettingsLoader = originalSettingsLoader;
-
         [Test]
         public void BuildCreateReportUrl_EscapesToken()
         {
@@ -194,7 +182,7 @@ namespace Codecks.Tests.Editor
         }
 
         [Test]
-        public void CreateNewCard_EmptyTokenCompletesCallbackOnce()
+        public void CreateNewCard_MissingSettingsCompletesCallbackOnce()
         {
             var gameObject = new GameObject("Codecks reliability test");
             try
@@ -223,11 +211,13 @@ namespace Codecks.Tests.Editor
         {
             var originalFactory = CodecksCardCreator.PostRequestFactory;
             var gameObject = new GameObject("Codecks reliability test");
+            var settings = ScriptableObject.CreateInstance<CodecksSettings>();
+            settings.reportToken = "dummy-token";
             try
             {
                 CodecksCardCreator.PostRequestFactory = (_, _) => throw new InvalidOperationException("test failure");
                 var creator = gameObject.AddComponent<CodecksCardCreator>();
-                creator.defaultToken = "token";
+                creator.settings = settings;
                 int callbackCount = 0;
                 string result = null;
 
@@ -245,6 +235,7 @@ namespace Codecks.Tests.Editor
             {
                 CodecksCardCreator.PostRequestFactory = originalFactory;
                 UnityEngine.Object.DestroyImmediate(gameObject);
+                UnityEngine.Object.DestroyImmediate(settings);
             }
         }
 

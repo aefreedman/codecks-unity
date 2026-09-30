@@ -46,25 +46,17 @@ namespace Codecks.Runtime
             throw new Exception("Never call this!");
         }
 
+        // Retained only to avoid breaking old scripts/serialized scenes. Never used for requests.
+        [HideInInspector, Obsolete("Assign settings instead. This legacy endpoint is ignored.")]
         public string codecksURL = CodecksSettings.DefaultEndpoint;
+        [HideInInspector, Obsolete("Configure settings.reportToken instead. This legacy token is ignored.")]
         public string defaultToken;
 
-        [Tooltip("Optional override. Otherwise Resources/Codecks/CodecksSettings is used automatically, then legacy configuration if no asset exists.")]
+        [Tooltip("Required report settings. Use Tools > Codecks > Set Up Imported Samples to wire imported sample scenes.")]
         public CodecksSettings settings;
-
-        internal static Func<CodecksSettings> SettingsLoader = () => Resources.Load<CodecksSettings>(CodecksSettings.ResourcePath);
-
-        private string loadedToken;
         private readonly HashSet<CardCreationOperation> activeOperations = new HashSet<CardCreationOperation>();
 
         public delegate void CardCreationResultDelegate(bool success, string result);
-
-        private void Start()
-        {
-            var loadedTokenFile = Resources.Load<TextAsset>("Codecks/codecksToken");
-            if (loadedTokenFile != null)
-                loadedToken = loadedTokenFile.text;
-        }
 
         private void OnDestroy()
         {
@@ -221,33 +213,30 @@ namespace Codecks.Runtime
 
         internal bool TryResolveConfiguration(out string token, out string endpoint, out string error)
         {
-            var selectedSettings = settings != null ? settings : SettingsLoader();
-            if (selectedSettings != null)
+            token = null;
+            endpoint = null;
+            if (settings == null)
             {
-                token = selectedSettings.reportToken;
-                endpoint = selectedSettings.endpoint;
-                if (string.IsNullOrWhiteSpace(token))
-                {
-                    error = "Codecks settings contain an empty report token.";
-                    return false;
-                }
-                if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
-                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
-                    string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo) ||
-                    !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
-                {
-                    error = "Codecks settings contain an invalid create-report endpoint; use an absolute HTTP(S) URL without credentials, query or fragment.";
-                    return false;
-                }
-                error = null;
-                return true;
+                error = "Codecks report settings are required. Assign a CodecksSettings asset or run Tools > Codecks > Set Up Imported Samples.";
+                return false;
             }
-
-            // Retain legacy token-file > component-token precedence when no settings asset exists.
-            token = string.IsNullOrEmpty(loadedToken) ? defaultToken : loadedToken;
-            endpoint = codecksURL;
-            error = string.IsNullOrEmpty(token) ? "empty codecks token" : null;
-            return error == null;
+            token = settings.reportToken;
+            endpoint = settings.endpoint;
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                error = "Codecks settings contain an empty report token.";
+                return false;
+            }
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+                string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo) ||
+                !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
+            {
+                error = "Codecks settings contain an invalid create-report endpoint; use an absolute HTTP(S) URL without credentials, query or fragment.";
+                return false;
+            }
+            error = null;
+            return true;
         }
 
         void StartNewCardRequest(string text, Dictionary<string, (byte[], CodecksFileType)> files,

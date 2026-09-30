@@ -75,6 +75,9 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             Assert.That(brand.resolvedStyle.backgroundImage.texture, Is.Not.Null);
             Assert.That(brand.resolvedStyle.height, Is.GreaterThan(40));
             Assert.That(brand.worldBound.width, Is.GreaterThan(100));
+            root.Q<ScrollView>().ScrollTo(brand);
+            yield return new WaitForEndOfFrame();
+            yield return new WaitForEndOfFrame();
             AssertRenderedLogo(root, brand);
             Directory.CreateDirectory("Evidence");
             File.WriteAllBytes("Evidence/mock-captured-attachment.jpg", bytes);
@@ -142,8 +145,9 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
                 Assert.That(ImageConversion.LoadImage(decoded, bytes), Is.True);
                 Assert.That(decoded.width, Is.EqualTo(Screen.width));
                 Assert.That(decoded.height, Is.EqualTo(Screen.height));
-                // The form would cover the centre-left sample, while the launcher does not.
-                foreach (var position in new[] { new Vector2(0.05f, 0.05f), new Vector2(0.4f, 0.5f), new Vector2(0.95f, 0.95f) })
+                // The form would cover the upper/lower centre sample, while the launcher does not,
+                // including small Game views where the fixed-width launcher spans centre-left.
+                foreach (var position in new[] { new Vector2(0.05f, 0.05f), new Vector2(0.5f, 0.25f), new Vector2(0.95f, 0.95f) })
                 {
                     var pixel = decoded.GetPixel((int)(position.x * decoded.width), (int)(position.y * decoded.height));
                     Assert.That(pixel.r, Is.EqualTo(0.49f).Within(0.04f));

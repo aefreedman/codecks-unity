@@ -58,17 +58,16 @@
 .codecks-feedback-caption {
     font-size: 11px;
     -unity-font-style: bold;
-    color: rgb(185, 190, 203);
+    color: white;
     margin-top: 8px;
     margin-bottom: 6px;
 }
 
-.codecks-feedback-help {
-    color: rgb(151, 158, 175);
-}
-
+/* Scope foreground overrides to the dark form, not detached dropdown menus. */
+.codecks-feedback-root .unity-text-element,
+.codecks-feedback-help,
 .codecks-feedback-privacy {
-    color: rgb(166, 139, 199);
+    color: white;
 }
 
 .codecks-feedback-report {
@@ -136,8 +135,13 @@
 
 .codecks-feedback-brand {
     background-image: url("powered-by-codecks.png");
-    -unity-background-scale-mode: scale-to-fit;
-    height: 47px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    align-self: center;
+    width: 180px;
+    max-width: 100%;
+    height: 55px;
     margin-top: 8px;
     margin-bottom: 8px;
 }

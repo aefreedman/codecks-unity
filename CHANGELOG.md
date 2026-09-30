@@ -4,13 +4,20 @@ All notable changes to this independent UPM fork are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Reporters now require an explicit `CodecksSettings` reference. Automatic Resources lookup and legacy token-file/component fallbacks are removed; hidden obsolete token/endpoint members remain only for migration compatibility and cannot configure requests.
+- **Tools > Codecks > Set Up Imported Samples** creates/reuses the default settings asset and wires missing references in closed standard imported sample scenes. It preserves configured assets/references and skips open or non-sample scenes.
+
 ### Added
 
-- Shared `CodecksSettings` ScriptableObject configuration with automatic Resources loading for both forms and an optional component override.
-- **Tools > Codecks > Create or Select Report Settings** creates/selects the default asset without overwriting existing configuration. Legacy token-file/component configuration remains supported when no settings asset exists.
+- Shared `CodecksSettings` ScriptableObject configuration for both forms.
+- **Tools > Codecks > Create or Select Report Settings** creates/selects the default asset without overwriting existing configuration.
 
 ### Fixed
 
+- Made Toolkit captions/help/privacy and inherited form text white against dark form backgrounds.
+- Preserved the Toolkit logo's source aspect ratio by disabling power-of-two rescaling during import and using bounded, centered contain sizing.
 - Included a rendering camera in the standalone UI Toolkit sample so screenshots contain the game background without manual scene setup.
 - Matched the UI Toolkit form's layout, copy and colors more closely to the uGUI sample, with scrollable controls for small windows and the actual Powered by Codecks image beside the form.
 - Distinguished card creation from attachment upload failure in the UI Toolkit status; retrying an attachment failure can create another report.

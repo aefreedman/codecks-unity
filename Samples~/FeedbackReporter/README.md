@@ -4,11 +4,11 @@ Import this sample from **Window > Package Manager > Codecks Bug & Feedback Repo
 
 ## Run the sample
 
-1. Select **Tools > Codecks > Create or Select Report Settings** and enter a report token in `Assets/Resources/Codecks/CodecksSettings.asset`. Both samples automatically use this one asset without scene wiring.
+1. With imported sample scenes closed, run **Tools > Codecks > Set Up Imported Samples**. This creates/selects `Assets/Resources/Codecks/CodecksSettings.asset` and wires missing references in standard imported sample scenes. Configure its report token/endpoint. Repeated setup preserves existing assets and references; open scenes are skipped.
 2. If the text in the scene is missing, use **Window > TextMeshPro > Import TMP Essential Resources**. The sample uses the standard TMP Liberation Sans font asset supplied by those resources.
 3. Enter Play mode, select **Give Feedback!**, enter a description of at least ten characters, then select **Send Report**.
 
-Configuration precedence is explicit component **Settings** > automatic `Resources/Codecks/CodecksSettings` > legacy configuration. Empty/invalid settings fail instead of falling back. With no settings asset, `CodecksCardCreator` first uses `Resources/Codecks/codecksToken.txt` when present; otherwise it uses **Default Token** and the component endpoint. Settings tokens remain extractable from player builds: do not commit configured assets. Existing tokens are never automatically copied/migrated. `CodecksTokenCreator.CreateAndSetNewToken` is intended for a trusted editor or build script and writes that resource file. Keep the access key out of source control and out of player builds; report tokens are the values intended to ship in a build.
+The backend requires an explicit **Settings** asset reference; automatic Resources and legacy token-file/component fallback are removed. Hidden obsolete token/endpoint fields are retained only for migration compatibility and are ignored. For customized scenes outside standard `Assets/Samples/` paths, explicitly assign your settings asset; bootstrap does not touch user scenes. Missing references and empty/invalid settings fail once before dispatch. Tokens are never copied automatically and remain extractable from builds; do not commit configured assets. Legacy `CodecksTokenCreator.CreateAndSetNewToken` writes a token file that is no longer used by the reporter: trusted tooling must configure the referenced asset instead. Keep access keys out of builds and source control.
 
 ## Input
 

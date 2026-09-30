@@ -35,15 +35,16 @@ For embedding, copy the sample UXML, USS, controller, and branding into `Assets`
 
 ## Tokens and report data
 
-Use **Tools > Codecks > Create or Select Report Settings** to create/select `Assets/Resources/Codecks/CodecksSettings.asset`. Enter a scoped **report token** and the create-report endpoint (the asset defaults to the Codecks endpoint). Both samples and all `CodecksCardCreator` components automatically use this one asset without scene wiring. The action never overwrites an existing asset/token. Do not create multiple Resources assets with the same resource path.
+After importing samples, close their scenes and run **Tools > Codecks > Set Up Imported Samples**. It creates/selects `Assets/Resources/Codecks/CodecksSettings.asset` and assigns that asset to missing settings references in standard imported sample scenes under `Assets/Samples/`. Repeated setup preserves the existing asset/token and existing explicit references. Open sample scenes are skipped (including clean scenes); close them and rerun. Other user scenes are never edited or saved. Configure the selected asset's scoped report token and endpoint once.
 
-Configuration precedence is: explicit component **Settings** asset > automatic `Resources/Codecks/CodecksSettings` asset > legacy configuration. A selected settings asset is authoritative: an empty/whitespace token or invalid endpoint fails safely with no fallback or network request. Endpoints must be absolute HTTP(S) URLs without credentials, query or fragment. Timeout remains the existing fixed 30 seconds, not a new asset option.
+`CodecksCardCreator.settings` is **required**. There is no automatic Resources lookup or token-file/component fallback, even if a conventional asset exists. Custom/revised scenes outside the standard imported sample location must explicitly reference the desired settings asset; the bootstrap intentionally does not rewrite them. **Tools > Codecks > Create or Select Report Settings** remains available for asset-only setup.
 
-With no settings asset, existing `Resources/Codecks/codecksToken.txt` > `CodecksCardCreator.defaultToken` precedence and `codecksURL` are preserved. Settings are resolved per submission; creating an asset does not copy or migrate any existing token. Enter the intended report token yourself. Remove an unused/empty default asset if you want legacy configuration to continue, or configure it before submitting.
+An empty/whitespace token or invalid endpoint fails clearly before network dispatch. Endpoints must be absolute HTTP(S) URLs without credentials, query or fragment. Timeout remains the existing fixed 30 seconds.
 
-Resources and ScriptableObject credentials remain **extractable from client builds**; this is not secret storage. Keep report tokens scoped and revocable, configure upload limits in Codecks, and do not commit configured assets or tokens to source control.
+Migration: `defaultToken` and `codecksURL` are hidden obsolete fields retained only for source/serialized compatibility and are ignored. Legacy `Resources/Codecks/codecksToken.txt` is no longer read. Manually configure the settings asset and assign references (or use the imported-sample bootstrap); no token is copied automatically. Existing configured settings assets at the default path are reused, not duplicated or reset.
 
-An **access key** is more sensitive: keep it out of builds and source control. `CodecksTokenCreator.CreateAndSetNewToken` is for a trusted editor or build pipeline and writes a report token resource; wait for its callback before continuing a build. This package does not provide a secure secret store.
+Resources/ScriptableObject credentials remain extractable from client builds. Keep configured assets/tokens out of source control; use scoped revocable report tokens, never access keys. This is not a secure secret store.
+An **access key** is more sensitive: keep it out of builds and source control. `CodecksTokenCreator.CreateAndSetNewToken` is for a trusted editor or build pipeline and writes a legacy report-token resource that no longer configures the reporter. Trusted tooling must configure the explicitly referenced settings asset instead; do not ship a build expecting token-file fallback. This package does not provide a secure secret store.
 
 Reports can include optional severity, email, metadata, and a screenshot attachment. The standard forms wait until the end of the current frame before capture so the overlay is not included. If screenshot capture is unavailable, they warn and submit without an attachment. The forms require at least ten report characters and surface retryable submission failures to the user.
 
@@ -63,7 +64,7 @@ Do not edit files in PackageCache. Import a sample, copy the consumer-owned UI a
 3. Install this package through Package Manager and import the matching sample.
 4. Reattach existing `CodecksCardCreator` and `CodecksCardCreatorForm` references where appropriate, then move custom subclasses and UI assets into `Assets`.
 5. For a UI Toolkit integration, replace `UIDocument`-based assumptions with a Panel Renderer and its reload callback lifecycle.
-6. Optionally run the shared settings setup action and manually enter your report token. Legacy scenes need no changes when no settings asset exists; a configured default asset overrides their old tokens/endpoints.
+6. Run the imported-sample bootstrap with sample scenes closed, then configure the selected settings asset. Custom scenes must explicitly reference it. Legacy token/endpoint fields no longer configure requests.
 7. Test report submission with a disposable token before releasing a player build.
 
 Existing runtime script GUIDs and public component names are preserved for the legacy uGUI integration, but sample assets are imported into the consumer project and should be treated as the new customization point.

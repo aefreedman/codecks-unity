@@ -4,9 +4,9 @@ Import this sample from **Window > Package Manager > Codecks Bug & Feedback Repo
 
 ## Run the standalone sample
 
-1. Open the scene and select `Codecks UI Toolkit Feedback Reporter`.
-2. Select **Tools > Codecks > Create or Select Report Settings**, then enter a scoped report token in `Assets/Resources/Codecks/CodecksSettings.asset`. Both samples automatically use the one asset; no scene token assignment is needed. Explicit component **Settings** overrides it. Empty/invalid settings fail without fallback; with no settings asset, legacy token-file > component-token precedence remains. No token is copied automatically. Configured assets are extractable in builds and must not be committed.
-3. Enter Play mode, select **Give Feedback**, write at least ten characters, choose severity, optionally enter an email address, and select **Send Report**.
+1. Import the sample and keep its scene closed while performing setup below.
+2. Before opening the sample, run **Tools > Codecks > Set Up Imported Samples** with standard imported sample scenes closed. It creates/selects `Assets/Resources/Codecks/CodecksSettings.asset` and wires missing references. Configure the scoped report token/endpoint once. Repeated setup preserves assets and references; open scenes are skipped, not saved. The backend requires an explicit **Settings** reference: automatic Resources and legacy token-file/component fallbacks are removed. Hidden obsolete legacy fields are ignored. For custom/revised scenes outside `Assets/Samples/`, explicitly assign the settings asset; bootstrap never rewrites those scenes. No token is copied automatically. Configured assets are extractable in builds and must not be committed.
+3. Open the sample scene, enter Play mode, select **Give Feedback**, write at least ten characters, choose severity, optionally enter an email address, and select **Send Report**.
 
 The standalone scene includes a camera with a solid background, matching the uGUI example. A camera must render the game frame for meaningful screenshots; a panel alone does not clear/render the background.
 
