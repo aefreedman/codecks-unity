@@ -20,6 +20,13 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
 {
     public class CodecksUIToolkitSubmissionTests
     {
+        private CodecksSettings localSettings;
+
+        [TearDown]
+        public void ReleaseLocalSettings()
+        {
+            if (localSettings != null) UnityEngine.Object.Destroy(localSettings);
+        }
         [UnityTest]
         public IEnumerator RealController_CapturesRenderedBackgroundAndCompletesLocalhostUpload()
         {
@@ -50,8 +57,10 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter.Tests
             var creator = UnityEngine.Object.FindAnyObjectByType<CodecksCardCreator>();
             Assert.That(UnityEngine.Camera.allCamerasCount, Is.EqualTo(1), "Standalone sample must render without manual setup.");
             using var server = new LocalServer(rejectUpload);
-            creator.codecksURL = server.Url + "create";
-            creator.defaultToken = "local-test-only";
+            localSettings = ScriptableObject.CreateInstance<CodecksSettings>();
+            localSettings.endpoint = server.Url + "create";
+            localSettings.reportToken = "local-test-only";
+            creator.settings = localSettings; // Explicitly isolate from any real default configuration.
             controller.ShowCodecksForm();
             yield return new WaitForEndOfFrame();
             yield return new WaitForEndOfFrame();

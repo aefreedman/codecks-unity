@@ -10,6 +10,18 @@ namespace Codecks.Tests.Editor
 {
     public class CodecksCardCreatorReliabilityTests
     {
+        private Func<CodecksSettings> originalSettingsLoader;
+
+        [SetUp]
+        public void IsolateConfiguration()
+        {
+            originalSettingsLoader = CodecksCardCreator.SettingsLoader;
+            CodecksCardCreator.SettingsLoader = () => null;
+        }
+
+        [TearDown]
+        public void RestoreConfiguration() => CodecksCardCreator.SettingsLoader = originalSettingsLoader;
+
         [Test]
         public void BuildCreateReportUrl_EscapesToken()
         {

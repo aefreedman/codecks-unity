@@ -4,11 +4,11 @@ Import this sample from **Window > Package Manager > Codecks Bug & Feedback Repo
 
 ## Run the sample
 
-1. Select `Canvas/CardCreator` and set **Default Token** to a Codecks report token.
+1. Select **Tools > Codecks > Create or Select Report Settings** and enter a report token in `Assets/Resources/Codecks/CodecksSettings.asset`. Both samples automatically use this one asset without scene wiring.
 2. If the text in the scene is missing, use **Window > TextMeshPro > Import TMP Essential Resources**. The sample uses the standard TMP Liberation Sans font asset supplied by those resources.
 3. Enter Play mode, select **Give Feedback!**, enter a description of at least ten characters, then select **Send Report**.
 
-`CodecksCardCreator` first uses `Resources/Codecks/codecksToken.txt` when present; otherwise it uses **Default Token**. `CodecksTokenCreator.CreateAndSetNewToken` is intended for a trusted editor or build script and writes that resource file. Keep the access key out of source control and out of player builds; report tokens are the values intended to ship in a build.
+Configuration precedence is explicit component **Settings** > automatic `Resources/Codecks/CodecksSettings` > legacy configuration. Empty/invalid settings fail instead of falling back. With no settings asset, `CodecksCardCreator` first uses `Resources/Codecks/codecksToken.txt` when present; otherwise it uses **Default Token** and the component endpoint. Settings tokens remain extractable from player builds: do not commit configured assets. Existing tokens are never automatically copied/migrated. `CodecksTokenCreator.CreateAndSetNewToken` is intended for a trusted editor or build script and writes that resource file. Keep the access key out of source control and out of player builds; report tokens are the values intended to ship in a build.
 
 ## Input
 

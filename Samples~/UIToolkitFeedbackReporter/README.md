@@ -5,7 +5,7 @@ Import this sample from **Window > Package Manager > Codecks Bug & Feedback Repo
 ## Run the standalone sample
 
 1. Open the scene and select `Codecks UI Toolkit Feedback Reporter`.
-2. In `CodecksCardCreator`, set **Default Token** to a Codecks report token. A `Resources/Codecks/codecksToken.txt` token takes precedence when present.
+2. Select **Tools > Codecks > Create or Select Report Settings**, then enter a scoped report token in `Assets/Resources/Codecks/CodecksSettings.asset`. Both samples automatically use the one asset; no scene token assignment is needed. Explicit component **Settings** overrides it. Empty/invalid settings fail without fallback; with no settings asset, legacy token-file > component-token precedence remains. No token is copied automatically. Configured assets are extractable in builds and must not be committed.
 3. Enter Play mode, select **Give Feedback**, write at least ten characters, choose severity, optionally enter an email address, and select **Send Report**.
 
 The standalone scene includes a camera with a solid background, matching the uGUI example. A camera must render the game frame for meaningful screenshots; a panel alone does not clear/render the background.

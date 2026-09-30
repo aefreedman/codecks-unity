@@ -4,6 +4,11 @@ All notable changes to this independent UPM fork are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Shared `CodecksSettings` ScriptableObject configuration with automatic Resources loading for both forms and an optional component override.
+- **Tools > Codecks > Create or Select Report Settings** creates/selects the default asset without overwriting existing configuration. Legacy token-file/component configuration remains supported when no settings asset exists.
+
 ### Fixed
 
 - Included a rendering camera in the standalone UI Toolkit sample so screenshots contain the game background without manual scene setup.

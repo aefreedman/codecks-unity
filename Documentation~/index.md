@@ -19,7 +19,7 @@ The package is currently prerelease (`0.1.0-pre.1`) and does not have an approve
 
 ### Feedback Reporter (uGUI)
 
-Import **Feedback Reporter (uGUI)**, then open `CodecksSampleScene`. It uses Canvas, the existing `CodecksCardCreatorForm`, and TextMesh Pro. Set `Canvas/CardCreator > CodecksCardCreator > Default Token` to a report token before entering Play mode.
+Import **Feedback Reporter (uGUI)**, then open `CodecksSampleScene`. It uses Canvas, the existing `CodecksCardCreatorForm`, and TextMesh Pro. Configure the shared report settings asset below before entering Play mode; no component/scene token wiring is required.
 
 If text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**. The sample uses the standard TMP Liberation Sans font asset. Its EventSystem uses `StandaloneInputModule`, which supports the legacy Input Manager or **Active Input Handling: Both**. New-Input-System-only projects must replace that module with `InputSystemUIInputModule`, configure its UI actions, and keep only one input module enabled.
 
@@ -43,7 +43,13 @@ The controller registers a Panel Renderer reload callback and rebuilds bindings 
 
 ## Tokens, privacy, and security
 
-A report token can be embedded in a player build. Set `CodecksCardCreator.defaultToken`, or provide `Resources/Codecks/codecksToken.txt`; the resource token wins when both exist. Do not commit report tokens, and revoke a token if it is exposed.
+Select **Tools > Codecks > Create or Select Report Settings**, then configure the created/selected `Assets/Resources/Codecks/CodecksSettings.asset` with a scoped report token and the create-report endpoint. It is automatically shared by both samples and custom `CodecksCardCreator` components. The action does not replace existing assets or copy any legacy token. Keep only one asset at the conventional Resources path.
+
+Precedence: explicit component **Settings** reference > automatic `Resources/Codecks/CodecksSettings` > legacy token-file/component configuration. A selected settings asset is authoritative, even when invalid: empty/whitespace tokens and endpoints that are not absolute HTTP(S) URLs, or contain credentials/query/fragment, fail before dispatch. There is no silent fallback to the production service. The existing fixed 30-second request timeout is unchanged.
+
+Without a settings asset, `Resources/Codecks/codecksToken.txt` still precedes `defaultToken`, and `codecksURL` remains the endpoint. Existing scenes can continue unchanged. To adopt the asset, manually configure it; to keep legacy settings, do not leave an empty default asset present.
+
+Report tokens in Resources/ScriptableObjects are extractable from a player build. This feature is not a secret store. Do not commit configured assets/tokens, use only scoped revocable report tokens (never an access key), and revoke a token if exposed.
 
 An access key must never ship in a player or source repository. Use `CodecksTokenCreator.CreateAndSetNewToken` only from a trusted editor or build process, wait for its callback, and protect the access key with the build system's secret handling. The package has no secure secret-storage facility.
 
@@ -53,9 +59,9 @@ Reports may send a description, optional severity, optional email, platform/app-
 
 Both supplied forms require at least ten report characters. They capture a screenshot at the end of the current frame before showing the overlay; this avoids capturing the form itself. Screenshot capture needs a graphics-capable runtime. On capture failure, the form logs a warning and sends the report without an attachment.
 
-The request path uses UnityWebRequest and supports report creation plus server-provided attachment uploads. Failed requests leave the form available for a retry. The uGUI form uses JPG attachments on standalone builds and PNG elsewhere; the UI Toolkit form follows the same policy.
+The request path uses UnityWebRequest and supports report creation plus server-provided attachment uploads. Failed requests leave the form available for a retry. Card creation can succeed before attachment upload fails; the Toolkit form warns that retrying such a partial failure creates a new report. The uGUI form uses JPG attachments on standalone builds and PNG elsewhere; the UI Toolkit form follows the same policy.
 
-The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 6000.6.0f1 with EditMode, localhost UnityWebRequest create/upload PlayMode, and graphics-capable form PlayMode coverage. A disposable Unity 6000.6.0f1 Windows x86-64 `StandaloneWindows64` player using Mono built and ran successfully. It submitted a localhost report body, high severity, email, and multipart text attachment; the player observed one callback and the endpoint observed one create request plus one upload request. This evidence is limited to Windows x86-64 Mono. IL2CPP is optional and unvalidated, and a disposable-token live submission remains an external release gate; do not infer support for untested player platforms from editor checks.
+The package has been compiled in Unity 6000.5.5 and behavior-checked in Unity 6000.6.0f1 with EditMode, localhost UnityWebRequest create/upload PlayMode, and graphics-capable form PlayMode coverage. A disposable Unity 6000.6.0f1 Windows x86-64 `StandaloneWindows64` player using Mono built and ran successfully. It submitted a localhost report body, high severity, email, and multipart text attachment; the player observed one callback and the endpoint observed one create request plus one upload request. This evidence is limited to Windows x86-64 Mono. IL2CPP is optional and unvalidated; do not infer support for untested player platforms from editor checks.
 
 ## Migrate from a copied plugin folder
 
@@ -72,8 +78,4 @@ The existing uGUI runtime component names and script GUIDs are preserved for mig
 
 The [MIT license](../LICENSE.md) retains the original Codecks GmbH copyright notice. This fork's support channel is its [issue tracker](https://github.com/aefreedman/codecks-unity/issues); Codecks GmbH does not support or endorse this fork.
 
-The upstream plugin supplied the bundled Codecks naming and visual assets. The MIT license does not itself grant trademark or logo rights. Codecks' published Terms of Service require entitlement to use trademark-protected content, and no separate public brand-use permission was identified during release preparation. Obtain permission before changing or redistributing branding in a way that requires it, and do not claim Codecks endorsement.
-
-## Release policy
-
-The version remains prerelease until clean branch-install verification, player validation, disposable-token live submission validation, branding permission review, and publication approval are complete. A future tag must match `package.json`. This documentation does not authorize tagging, pushing, or publishing.
+The upstream plugin supplied the bundled Codecks naming and visual assets. Retain the visible Powered by Codecks image beside the report form when adapting the samples. The software license does not itself grant trademark rights; do not claim Codecks endorsement.

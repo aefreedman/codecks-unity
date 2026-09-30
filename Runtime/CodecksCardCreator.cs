@@ -46,8 +46,13 @@ namespace Codecks.Runtime
             throw new Exception("Never call this!");
         }
 
-        public string codecksURL = "https://api.codecks.io/user-report/v1/create-report";
+        public string codecksURL = CodecksSettings.DefaultEndpoint;
         public string defaultToken;
+
+        [Tooltip("Optional override. Otherwise Resources/Codecks/CodecksSettings is used automatically, then legacy configuration if no asset exists.")]
+        public CodecksSettings settings;
+
+        internal static Func<CodecksSettings> SettingsLoader = () => Resources.Load<CodecksSettings>(CodecksSettings.ResourcePath);
 
         private string loadedToken;
         private readonly HashSet<CardCreationOperation> activeOperations = new HashSet<CardCreationOperation>();
@@ -214,16 +219,46 @@ namespace Codecks.Runtime
             StartNewCardRequest(text, null, severity, userEmail, resultDelegate);
         }
 
+        internal bool TryResolveConfiguration(out string token, out string endpoint, out string error)
+        {
+            var selectedSettings = settings != null ? settings : SettingsLoader();
+            if (selectedSettings != null)
+            {
+                token = selectedSettings.reportToken;
+                endpoint = selectedSettings.endpoint;
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    error = "Codecks settings contain an empty report token.";
+                    return false;
+                }
+                if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) ||
+                    (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps) ||
+                    string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo) ||
+                    !string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
+                {
+                    error = "Codecks settings contain an invalid create-report endpoint; use an absolute HTTP(S) URL without credentials, query or fragment.";
+                    return false;
+                }
+                error = null;
+                return true;
+            }
+
+            // Retain legacy token-file > component-token precedence when no settings asset exists.
+            token = string.IsNullOrEmpty(loadedToken) ? defaultToken : loadedToken;
+            endpoint = codecksURL;
+            error = string.IsNullOrEmpty(token) ? "empty codecks token" : null;
+            return error == null;
+        }
+
         void StartNewCardRequest(string text, Dictionary<string, (byte[], CodecksFileType)> files,
             CodecksSeverity severity, string userEmail, CardCreationResultDelegate resultDelegate)
         {
             var operation = new CardCreationOperation(this, resultDelegate);
             activeOperations.Add(operation);
 
-            string tokenToUse = string.IsNullOrEmpty(loadedToken) ? defaultToken : loadedToken;
-            if (string.IsNullOrEmpty(tokenToUse))
+            if (!TryResolveConfiguration(out string tokenToUse, out string endpoint, out string configurationError))
             {
-                operation.Complete(false, "empty codecks token");
+                operation.Complete(false, configurationError);
                 return;
             }
 
@@ -249,7 +284,7 @@ namespace Codecks.Runtime
                 };
 
                 string json = JsonConvert.SerializeObject(cardData).Replace(",\"severity\":null", "");
-                request = PostRequestFactory(BuildCreateReportUrl(codecksURL, tokenToUse), json);
+                request = PostRequestFactory(BuildCreateReportUrl(endpoint, tokenToUse), json);
                 if (request == null)
                     throw new InvalidOperationException("Codecks request factory returned no request.");
                 operation.SetRequest(request);

@@ -23,7 +23,7 @@ The package is currently `0.1.0-pre.1`; no release tag has been approved. Do not
 
 ### uGUI
 
-The uGUI sample contains `CodecksSampleScene`, a Canvas form, and TextMesh Pro fields. After importing it, assign a report token to `Canvas/CardCreator > CodecksCardCreator > Default Token`. If TMP text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**; the sample uses TMP's standard Liberation Sans asset.
+The uGUI sample contains `CodecksSampleScene`, a Canvas form, and TextMesh Pro fields. After importing it, configure the shared report settings asset described below; no scene token assignment is needed. If TMP text is missing, import **Window > TextMeshPro > Import TMP Essential Resources**; the sample uses TMP's standard Liberation Sans asset.
 
 The sample EventSystem uses `StandaloneInputModule`, suitable for the legacy Input Manager or **Active Input Handling: Both**. In a new-Input-System-only project, replace it with `InputSystemUIInputModule`, configure that module's UI actions, and do not enable both modules on one EventSystem. See the [uGUI sample guide](Samples~/FeedbackReporter/README.md) for metadata customization and setup details.
 
@@ -35,7 +35,13 @@ For embedding, copy the sample UXML, USS, controller, and branding into `Assets`
 
 ## Tokens and report data
 
-A **report token** may be embedded in a player build. Set it in `CodecksCardCreator.defaultToken`, or create `Resources/Codecks/codecksToken.txt`; the resource token takes precedence. Keep report tokens scoped and revocable, configure upload limits in Codecks, and do not commit tokens to source control.
+Use **Tools > Codecks > Create or Select Report Settings** to create/select `Assets/Resources/Codecks/CodecksSettings.asset`. Enter a scoped **report token** and the create-report endpoint (the asset defaults to the Codecks endpoint). Both samples and all `CodecksCardCreator` components automatically use this one asset without scene wiring. The action never overwrites an existing asset/token. Do not create multiple Resources assets with the same resource path.
+
+Configuration precedence is: explicit component **Settings** asset > automatic `Resources/Codecks/CodecksSettings` asset > legacy configuration. A selected settings asset is authoritative: an empty/whitespace token or invalid endpoint fails safely with no fallback or network request. Endpoints must be absolute HTTP(S) URLs without credentials, query or fragment. Timeout remains the existing fixed 30 seconds, not a new asset option.
+
+With no settings asset, existing `Resources/Codecks/codecksToken.txt` > `CodecksCardCreator.defaultToken` precedence and `codecksURL` are preserved. Settings are resolved per submission; creating an asset does not copy or migrate any existing token. Enter the intended report token yourself. Remove an unused/empty default asset if you want legacy configuration to continue, or configure it before submitting.
+
+Resources and ScriptableObject credentials remain **extractable from client builds**; this is not secret storage. Keep report tokens scoped and revocable, configure upload limits in Codecks, and do not commit configured assets or tokens to source control.
 
 An **access key** is more sensitive: keep it out of builds and source control. `CodecksTokenCreator.CreateAndSetNewToken` is for a trusted editor or build pipeline and writes a report token resource; wait for its callback before continuing a build. This package does not provide a secure secret store.
 
@@ -57,14 +63,15 @@ Do not edit files in PackageCache. Import a sample, copy the consumer-owned UI a
 3. Install this package through Package Manager and import the matching sample.
 4. Reattach existing `CodecksCardCreator` and `CodecksCardCreatorForm` references where appropriate, then move custom subclasses and UI assets into `Assets`.
 5. For a UI Toolkit integration, replace `UIDocument`-based assumptions with a Panel Renderer and its reload callback lifecycle.
-6. Test report submission with a disposable token before releasing a player build.
+6. Optionally run the shared settings setup action and manually enter your report token. Legacy scenes need no changes when no settings asset exists; a configured default asset overrides their old tokens/endpoints.
+7. Test report submission with a disposable token before releasing a player build.
 
 Existing runtime script GUIDs and public component names are preserved for the legacy uGUI integration, but sample assets are imported into the consumer project and should be treated as the new customization point.
 
 ## Tested support and current limits
 
 - Minimum package declaration: Unity 6000.5. A clean 6000.5.5 project compiled the package and verified the uGUI/TMP sample.
-- Primary behavior checks: Unity 6000.6.0f1 has 16 runtime EditMode tests, 4 imported UI Toolkit EditMode tests, loopback UnityWebRequest create/upload PlayMode tests, and graphics-capable PlayMode form tests. The loopback endpoint is bound to localhost and uses no credentials.
+- Primary behavior checks use Unity 6000.6.0f1, including shared configuration, localhost create/upload and graphics-capable form checks. They do not establish live-service success for every environment.
 - Windows x86-64 standalone player validation passed on Unity 6000.6.0f1 using the Mono scripting backend. A disposable player submitted a localhost report body, high severity, email, and multipart text attachment; the player observed one callback and the endpoint observed one create request plus one upload request. This evidence covers `StandaloneWindows64` with Mono only. IL2CPP is optional and has not been validated.
 - Screenshot capture depends on a graphics-capable runtime. When it fails, reports are sent without a screenshot rather than blocking the form.
 - Destroying a `CodecksCardCreator` while a report or attachment upload is in progress cancels that operation, disposes its request, and calls its result delegate once with a failure. Keep the creator alive until its callback when the caller needs the report result.
@@ -73,8 +80,4 @@ Existing runtime script GUIDs and public component names are preserved for the l
 
 The retained [MIT license](LICENSE.md) preserves Codecks GmbH's original copyright notice. The original repository is [codecks-io/codecks-unity](https://github.com/codecks-io/codecks-unity); this fork adds UPM packaging, reliability work, and the UI Toolkit sample.
 
-The included Codecks naming and visual assets originate in the upstream plugin. MIT licensing covers the software and documentation, but it is not a trademark or logo license. A review of Codecks' published Terms of Service found no separate public brand-use grant; those terms require users to be entitled to use trademark-protected content. Confirm the necessary permission before redistributing modified branding or implying Codecks endorsement.
-
-## Release policy
-
-Versions remain prereleases until the release gates above, branch-install verification, branding permission review, and publication approval are complete. A release tag must match `package.json`; creating tags, pushing, and publishing are intentionally not performed by this package.
+The included Codecks naming and visual assets originate in the upstream plugin. Retain the visible Powered by Codecks image beside the report form when adapting the samples. The software license is not a trademark license; do not imply Codecks endorsement.

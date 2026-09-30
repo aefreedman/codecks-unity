@@ -133,8 +133,7 @@ namespace Codecks.Tests.PlayMode
             using var server = new LoopbackServer(_ => Response.Json("{\"ok\":true,\"cardId\":\"disabled\"}", 100));
             var host = new GameObject("Codecks disable test");
             var creator = host.AddComponent<CodecksCardCreator>();
-            creator.codecksURL = server.Url + "create";
-            creator.defaultToken = "loopback-token";
+            var settings = ConfigureLocal(creator, server.Url + "create");
             bool completed = false;
             bool success = false;
             try
@@ -159,6 +158,7 @@ namespace Codecks.Tests.PlayMode
             finally
             {
                 UnityEngine.Object.Destroy(host);
+                UnityEngine.Object.Destroy(settings);
             }
         }
 
@@ -184,8 +184,7 @@ namespace Codecks.Tests.PlayMode
         {
             var host = new GameObject("Codecks destruction test");
             var creator = host.AddComponent<CodecksCardCreator>();
-            creator.codecksURL = server.Url + "create";
-            creator.defaultToken = "loopback-token";
+            var settings = ConfigureLocal(creator, server.Url + "create");
             int callbackCount = 0;
             bool success = true;
             string result = null;
@@ -202,6 +201,7 @@ namespace Codecks.Tests.PlayMode
 
             Assert.That(server.Requests.Length, Is.EqualTo(expectedRequestCount));
             UnityEngine.Object.Destroy(host);
+            UnityEngine.Object.Destroy(settings);
             yield return null;
             Assert.That(callbackCount, Is.EqualTo(1));
             Assert.That(success, Is.False);
@@ -229,8 +229,7 @@ namespace Codecks.Tests.PlayMode
         {
             var host = new GameObject("Codecks loopback test");
             var creator = host.AddComponent<CodecksCardCreator>();
-            creator.codecksURL = server.Url + "create";
-            creator.defaultToken = "loopback-token";
+            var settings = ConfigureLocal(creator, server.Url + "create");
             int callbackCount = 0;
             bool completed = false;
             bool success = false;
@@ -257,7 +256,17 @@ namespace Codecks.Tests.PlayMode
             finally
             {
                 UnityEngine.Object.Destroy(host);
+                UnityEngine.Object.Destroy(settings);
             }
+        }
+
+        private static CodecksSettings ConfigureLocal(CodecksCardCreator creator, string endpoint)
+        {
+            var settings = ScriptableObject.CreateInstance<CodecksSettings>();
+            settings.reportToken = "loopback-token";
+            settings.endpoint = endpoint;
+            creator.settings = settings; // Never read automatic/real configuration in HTTP tests.
+            return settings;
         }
 
         private sealed class LoopbackServer : IDisposable
