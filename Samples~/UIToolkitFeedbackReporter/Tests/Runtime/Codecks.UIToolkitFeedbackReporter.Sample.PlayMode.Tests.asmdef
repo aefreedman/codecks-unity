@@ -1,0 +1,22 @@
+{
+    "name": "Codecks.UIToolkitFeedbackReporter.Sample.PlayMode.Tests",
+    "rootNamespace": "Codecks.Samples.UIToolkitFeedbackReporter.Tests",
+    "references": [
+        "Codecks.UIToolkitFeedbackReporter.Sample",
+        "CodecksRuntime",
+        "Unity.TextMeshPro",
+        "Unity.ugui"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

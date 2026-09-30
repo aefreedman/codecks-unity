@@ -1,0 +1,22 @@
+{
+    "name": "Codecks.UIToolkitFeedbackReporter.Sample.Tests",
+    "rootNamespace": "Codecks.Samples.UIToolkitFeedbackReporter.Tests",
+    "references": [
+        "Codecks.UIToolkitFeedbackReporter.Sample",
+        "CodecksRuntime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false,
+    "optionalUnityReferences": [
+        "TestAssemblies"
+    ]
+}

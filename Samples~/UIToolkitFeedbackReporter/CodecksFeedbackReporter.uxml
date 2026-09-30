@@ -1,0 +1,27 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+    <Style src="CodecksFeedbackReporter.uss" />
+    <ui:VisualElement class="codecks-feedback-root">
+        <ui:Button name="codecks-feedback-launcher" text="Give Feedback!" class="codecks-feedback-launcher" tabindex="0" />
+        <ui:VisualElement name="codecks-feedback-overlay" class="codecks-feedback-overlay">
+            <ui:ScrollView class="codecks-feedback-scroll">
+                <ui:VisualElement class="codecks-feedback-dialog">
+                    <ui:Label text="Give feedback" class="codecks-feedback-title" />
+                    <ui:VisualElement class="codecks-feedback-divider" />
+                    <ui:Label text="SELECT A CATEGORY" class="codecks-feedback-caption" />
+                    <ui:DropdownField name="codecks-feedback-severity" choices="None,Low,High,Critical" value="None" class="codecks-feedback-severity" tabindex="1" />
+                    <ui:Label text="BUG DESCRIPTION" class="codecks-feedback-caption" />
+                    <ui:Label text="Please include this information:&#10;1) Description of the bug&#10;2) What you did to get the bug (a step-by-step is best)&#10;3) What you think should have happened instead" class="codecks-feedback-help" />
+                    <ui:TextField name="codecks-feedback-report" multiline="true" placeholder-text="Write Bug Description Here" class="codecks-feedback-report" tabindex="2" />
+                    <ui:TextField name="codecks-feedback-email" label="YOUR E-MAIL (OPTIONAL)" placeholder-text="Your email address in here" class="codecks-feedback-email" tabindex="3" />
+                    <ui:Label text="Your reported data is shared with the game developer. You may be identifiable by the developer. If you provide your email, you may receive updates or questions regarding your feedback." class="codecks-feedback-help codecks-feedback-privacy" />
+                    <ui:VisualElement class="codecks-feedback-actions">
+                        <ui:Button name="codecks-feedback-cancel" text="Cancel" class="codecks-feedback-cancel" tabindex="4" />
+                        <ui:Button name="codecks-feedback-send" text="Send report" class="codecks-feedback-send" tabindex="5" />
+                    </ui:VisualElement>
+                    <ui:Label name="codecks-feedback-status" class="codecks-feedback-status" />
+                </ui:VisualElement>
+                <ui:VisualElement name="codecks-feedback-brand" tooltip="Powered by Codecks" class="codecks-feedback-brand" />
+            </ui:ScrollView>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

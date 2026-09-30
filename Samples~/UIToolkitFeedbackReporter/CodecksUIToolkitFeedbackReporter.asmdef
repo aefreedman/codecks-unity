@@ -1,0 +1,16 @@
+{
+    "name": "Codecks.UIToolkitFeedbackReporter.Sample",
+    "rootNamespace": "Codecks.Samples.UIToolkitFeedbackReporter",
+    "references": [
+        "CodecksRuntime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
