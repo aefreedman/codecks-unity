@@ -30,9 +30,21 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
         private byte[] queuedScreenshot;
         private CodecksCardCreator.CodecksFileType queuedScreenshotType;
         private int boundVersion = -1;
+        private int bindingGeneration;
         private int session;
-        private bool overlayOpen;
         private bool submissionInFlight;
+        private bool awaitingSubmission;
+        private readonly CodecksFormLifecycle lifecycle = new CodecksFormLifecycle();
+        public CodecksFormState State => lifecycle.State;
+        public event Action<CodecksFormState> StateChanged
+        {
+            add => lifecycle.StateChanged += value;
+            remove => lifecycle.StateChanged -= value;
+        }
+        /// <summary>Optional caller modal ownership. Assigned in code; null means no ownership.</summary>
+        public Func<IDisposable> AcquireScope { get; set; }
+        /// <summary>Current session only; requests dispatched by closed sessions can still complete.</summary>
+        public bool IsSubmitting => awaitingSubmission;
         private Coroutine showCoroutine;
         private Coroutine dismissCoroutine;
         private Coroutine bindingRecoveryCoroutine;
@@ -53,8 +65,15 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (panelRenderer != null)
                 panelRenderer.UnregisterUIReloadCallback(OnUIReload);
 
-            InvalidateSession();
-            DetachBindings();
+            CloseSession(true);
+        }
+
+        private void OnDestroy() => CloseSession(true);
+
+        private void Update()
+        {
+            if (State != CodecksFormState.Closed && !IsBound())
+                CloseSession(true);
         }
 
         private IEnumerator RebindWhenRendererIsActive()
@@ -80,8 +99,9 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (root == currentRoot && boundVersion == version)
                 return;
 
-            InvalidateSession();
-            DetachBindings();
+            int binding = ++bindingGeneration;
+            CloseSession(true);
+            if (!isActiveAndEnabled || binding != bindingGeneration) return;
 
             if (currentRoot == null || (renderer != null && renderer.visualTreeAsset == null))
             {
@@ -103,6 +123,7 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (!ValidateRequiredElements())
                 return;
 
+            BindPointerBoundary(true);
             severityField.formatSelectedValueCallback = FormatSeverity;
             severityField.formatListItemCallback = FormatSeverity;
             if (launcherButton != null) launcherButton.clicked += ShowCodecksForm;
@@ -115,11 +136,11 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
         /// <summary>Captures a screenshot, then displays the report overlay.</summary>
         public void ShowCodecksForm()
         {
-            if (!IsBound() || overlayOpen || showCoroutine != null)
+            if (!IsBound() || State != CodecksFormState.Closed)
                 return;
 
-            InvalidateSession();
-            showCoroutine = StartCoroutine(ShowAfterScreenshotCoroutine(session));
+            int opening = BeginSession();
+            if (IsCurrentSession(opening)) showCoroutine = StartCoroutine(ShowAfterScreenshotCoroutine(opening));
         }
 
         /// <summary>Opens immediately with caller-owned encoded JPG or PNG bytes, without capture or an end-of-frame wait.</summary>
@@ -130,24 +151,22 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (fileType != CodecksCardCreator.CodecksFileType.JPG && fileType != CodecksCardCreator.CodecksFileType.PNG)
                 throw new ArgumentOutOfRangeException(nameof(fileType), "Screenshots must be encoded as JPG or PNG.");
             if (!IsBound()) return;
-            InvalidateSession();
-            OpenForm(screenshot, fileType);
+            int opening = BeginSession();
+            if (IsCurrentSession(opening) && IsBound()) OpenForm(opening, screenshot, fileType);
         }
 
         /// <summary>Opens immediately without a screenshot, capture, or an end-of-frame wait.</summary>
         public void ShowCodecksFormWithoutScreenshot()
         {
             if (!IsBound()) return;
-            InvalidateSession();
-            OpenForm(null, DefaultScreenshotFileType);
+            int opening = BeginSession();
+            if (IsCurrentSession(opening) && IsBound()) OpenForm(opening, null, DefaultScreenshotFileType);
         }
 
         /// <summary>Closes the report overlay without removing the Panel Renderer reload subscription.</summary>
         public void HideCodecksForm()
         {
-            InvalidateSession();
-            if (overlay != null)
-                overlay.style.display = DisplayStyle.None;
+            CloseSession(false);
         }
 
         private IEnumerator ShowAfterScreenshotCoroutine(int activeSession)
@@ -156,11 +175,18 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             if (!IsCurrentSession(activeSession))
                 yield break;
 
-            byte[] screenshot = CaptureScreenshot();
-            if (!IsCurrentSession(activeSession) || overlay == null)
+            byte[] screenshot;
+            try { screenshot = CaptureScreenshot(); }
+            catch (Exception)
+            {
+                if (IsCurrentSession(activeSession)) HideCodecksForm();
+                Debug.LogWarning("Codecks UI Toolkit capture override threw; opening was aborted.");
                 yield break;
+            }
+            if (!IsCurrentSession(activeSession)) yield break;
+            if (!IsBound()) { HideCodecksForm(); yield break; }
             showCoroutine = null;
-            OpenForm(screenshot, DefaultScreenshotFileType);
+            OpenForm(activeSession, screenshot, DefaultScreenshotFileType);
         }
 
         private static CodecksCardCreator.CodecksFileType DefaultScreenshotFileType =>
@@ -170,21 +196,24 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             CodecksCardCreator.CodecksFileType.PNG;
 #endif
 
-        private void OpenForm(byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
+        private void OpenForm(int opening, byte[] screenshot, CodecksCardCreator.CodecksFileType fileType)
         {
             queuedScreenshot = screenshot;
             queuedScreenshotType = fileType;
-            reportField.value = string.Empty;
+            reportField.SetValueWithoutNotify(string.Empty);
             statusLabel.text = string.Empty;
             sendButton.SetEnabled(true);
+            if (!IsCurrentSession(opening) || !IsBound()) return;
             overlay.style.display = DisplayStyle.Flex;
-            overlayOpen = true;
             reportField.Focus();
+            if (!IsCurrentSession(opening)) return;
+            if (!IsBound()) { CloseSession(true); return; }
+            lifecycle.Open(opening);
         }
 
         private void SendReport()
         {
-            if (!IsBound() || !overlayOpen || submissionInFlight)
+            if (!IsBound() || State != CodecksFormState.Open || submissionInFlight)
                 return;
 
             if (reportField.value == null || reportField.value.Trim().Length < 10)
@@ -196,9 +225,11 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
             int activeSession = session;
             submissionInFlight = true;
+            awaitingSubmission = true;
             sendButton.SetEnabled(false);
             statusLabel.text = "Sending report...";
             string report = reportField.value + "\n\n" + GetMetadata();
+            if (!IsCurrentSession(activeSession) || !IsBound()) return;
             var files = new Dictionary<string, (byte[], CodecksCardCreator.CodecksFileType)>();
             if (queuedScreenshot != null)
             {
@@ -212,9 +243,10 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
         private void HandleSubmissionResult(int activeSession, bool success, string result)
         {
-            if (!IsCurrentSession(activeSession) || !IsBound() || overlay.style.display == DisplayStyle.None)
+            if (!IsCurrentSession(activeSession) || !IsBound() || State != CodecksFormState.Open)
                 return;
 
+            awaitingSubmission = false;
             if (!success)
             {
                 Debug.LogWarning("Codecks UI Toolkit report submission failed: " + result, this);
@@ -284,8 +316,55 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             return false;
         }
 
+        // Bubble only: descendants retain their target/default actions (including focus),
+        // while presentation ancestors do not treat modal input as their own commands.
+        private static void StopModalPointerEvent<T>(T evt) where T : EventBase<T>, new()
+        {
+            evt.StopPropagation();
+        }
+
+        private void BindPointerBoundary(bool bind)
+        {
+            if (overlay == null) return;
+            if (bind)
+            {
+                overlay.RegisterCallback<PointerDownEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerUpEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerMoveEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerCancelEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerOverEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<PointerOutEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseDownEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseUpEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseMoveEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseOverEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<MouseOutEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<ClickEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<WheelEvent>(StopModalPointerEvent);
+                overlay.RegisterCallback<ContextClickEvent>(StopModalPointerEvent);
+            }
+            else
+            {
+                overlay.UnregisterCallback<PointerDownEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerUpEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerMoveEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerCancelEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerOverEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<PointerOutEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseDownEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseUpEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseMoveEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseOverEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<MouseOutEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<ClickEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<WheelEvent>(StopModalPointerEvent);
+                overlay.UnregisterCallback<ContextClickEvent>(StopModalPointerEvent);
+            }
+        }
+
         private void DetachBindings()
         {
+            BindPointerBoundary(false);
             if (launcherButton != null)
                 launcherButton.clicked -= ShowCodecksForm;
             if (sendButton != null)
@@ -305,13 +384,37 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
             boundVersion = -1;
         }
 
-        private void InvalidateSession()
+        private int BeginSession()
         {
-            session++;
-            overlayOpen = false;
+            int opening = lifecycle.Begin(ResetSession, () => AcquireScope?.Invoke(), HideCodecksForm);
+            if (IsCurrentSession(opening) && !IsBound()) CloseSession(true);
+            return opening;
+        }
+
+        private void ResetSession(int current)
+        {
+            session = current;
             submissionInFlight = false;
+            awaitingSubmission = false;
             queuedScreenshot = null;
             StopActiveCoroutines();
+        }
+
+        private void CloseSession(bool detach)
+        {
+            if (State == CodecksFormState.Closed)
+            {
+                StopActiveCoroutines();
+                if (overlay != null) overlay.style.display = DisplayStyle.None;
+                if (detach) DetachBindings();
+                return;
+            }
+            lifecycle.Close(current =>
+            {
+                ResetSession(current);
+                if (overlay != null) overlay.style.display = DisplayStyle.None;
+                if (detach) DetachBindings();
+            });
         }
 
         private void StopActiveCoroutines()
@@ -329,12 +432,12 @@ namespace Codecks.Samples.UIToolkitFeedbackReporter
 
         private bool IsBound()
         {
-            return isActiveAndEnabled && root != null && overlay != null && cardCreator != null;
+            return isActiveAndEnabled && IsPanelRendererActive() && root != null && overlay != null && cardCreator != null;
         }
 
         private bool IsCurrentSession(int activeSession)
         {
-            return isActiveAndEnabled && activeSession == session;
+            return this != null && isActiveAndEnabled && lifecycle.IsCurrent(activeSession);
         }
 
         private static string FormatSeverity(string severity)

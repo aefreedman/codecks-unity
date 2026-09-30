@@ -2,6 +2,8 @@
 
 Import this sample from **Window > Package Manager > Codecks Bug & Feedback Reporter > Samples**, then open `CodecksUIToolkitFeedbackReporterScene`. The sample uses runtime UI Toolkit only: it does not require the uGUI sample or TMP Essential Resources. It contains no report token or credentials.
 
+**0.2.0:** this sample includes modal lifecycle and form-only composition. Updating the package does not update previously imported copies; merge these changes deliberately into customized controllers/UI assets, preserving settings and scene references.
+
 ## Run the standalone sample
 
 1. Import the sample and keep its scene closed while performing setup below.
@@ -16,7 +18,7 @@ When the launcher is selected, the controller waits through the current frame an
 
 ## Embed and restyle
 
-Copy the UXML, USS, controller, and branding asset into your own `Assets` folder so they remain consumer-owned across package updates. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject. Assign your copied UXML to **Visual Tree Asset** and your PanelSettings to **Panel Settings**, then assign the same `CodecksCardCreator` to the controller. The UXML named elements below are required by the controller. The optional `codecks-feedback-launcher` button may be removed when your menu/hotkey calls the public API:
+Copy `CodecksFeedbackForm.uxml`, the shared `CodecksFeedbackReporter.uss`, controller, and branding asset into your own `Assets` folder so they remain consumer-owned across package updates. Add `PanelRenderer`, `CodecksCardCreator`, and `CodecksUIToolkitFeedbackController` to a GameObject. Assign the copied form-only UXML to **Visual Tree Asset** and your PanelSettings to **Panel Settings**, then assign the same `CodecksCardCreator` to the controller. For the optional standalone launcher, copy `CodecksFeedbackReporter.uxml` too: it composes the same form through a relative template reference, not a duplicate form. Keep these files together when copying. The UXML named elements below are required by the controller. The optional `codecks-feedback-launcher` button may be removed when your menu/hotkey calls the public API:
 
 - `codecks-feedback-overlay`
 - `codecks-feedback-report`, `codecks-feedback-severity`, `codecks-feedback-email`
@@ -43,6 +45,14 @@ The supplied-image and no-image modes open immediately without waiting for end-o
 Capture before your pause menu is shown, then pass the encoded bytes. Own/dispose your capture texture yourself; the controller retains but never modifies/disposes the byte array, so keep it unchanged while submission is using it. Default capture alone creates/destroys its temporary texture. Closing/reopening does not cancel a report already dispatched, but its late callback cannot overwrite the new session. Call after the enabled Panel Renderer has initialized bindings. Your own launcher/menu/hotkey can use these methods without a sample launcher element.
 
 The controller uses `CodecksCardCreator.CreateNewCard`, preserving its token, request, upload, and retryable error behavior. Success is shown only after card creation **and** attachment upload complete. An attachment failure can leave a real card on the service: the form explicitly warns that retrying creates another report. A connection error alone does not identify the remote service cause.
+
+## Caller-owned modal input
+
+Both forms expose `State` (`CodecksFormState.Closed`, `Opening`, `Open`), `StateChanged`, optional code-assigned `Func<IDisposable> AcquireScope`, and read-only current-session `IsSubmitting`. Assign scope acquisition to your project coordinator; the package never pauses gameplay, switches action maps, polls Escape or restores previous focus. Order: notify Opening, acquire scope, capture, show/focus report field, notify Open. Close hides/invalidates, notifies Closed, then disposes the detached scope once. Replacement retains scope; reentrant observers can reopen before an older scope's disposal. Independent coordinator tokens must not unlock/refocus a newer modal. `IsSubmitting` becomes false on success/failure/close/replacement; successful once-only send prevention stays latched until dismissal/replacement. Old dispatched requests can still complete without affecting the new session.
+
+Route keyboard/gamepad back/cancel to `HideCodecksForm()` while this modal owns commands, not to the underlying menu too. Preserve text entry/UI navigation and restore focus through your coordinator's ownership token. Capture before displaying pause/menu UI, using the supplied-image API above: scope acquisition is before default capture, so a scope that shows other UI can otherwise include it in the screenshot.
+
+Outer layout wrappers are non-pickable; the open full-screen overlay is pickable. Bubble-only pointer/mouse/click/wheel boundaries stop parent presentation handlers, without preventing default field focus, internal controls or scrolling. Parent trickle-down handlers run first and must consult your coordinator. Detached dropdown menus, other panels, uGUI and gameplay are not globally blocked by these handlers. An embedded host must cover the area you want blocked and use intentional panel sort order. See the [full modal contract](../../Documentation~/index.md#consumer-owned-modal-integration) for exact ordering, callback exception policy, reload/abort cleanup and focus restoration.
 
 ## Local regression checks
 

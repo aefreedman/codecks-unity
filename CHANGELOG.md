@@ -2,6 +2,24 @@
 
 All notable changes to this independent UPM fork are documented here. Releases use matching package versions and `v<version>` Git tags. Version 0.x APIs may change between minor releases; migration guidance accompanies breaking changes.
 
+## 0.2.0
+
+### Added
+
+- Matching `Closed`/`Opening`/`Open` state, `StateChanged`, current-session `IsSubmitting`, and optional code-assigned `AcquireScope` on both forms. Caller-owned modal scopes are acquired before default capture and released on close/abort/disable/destroy; explicit session replacement retains ownership.
+- Embeddable `CodecksFeedbackForm.uxml` with no launcher. The existing standalone template composes that same form with an optional launcher and shared styling/branding.
+- Non-pickable outer Toolkit layout wrappers, a pickable full-screen open overlay, and bubble-phase pointer/mouse/click/wheel boundaries that retain internal controls and default focus behavior.
+- Focused lifecycle, reentrancy, template composition and real-panel propagation regressions; consumer-owned command routing and scope/focus restoration guidance.
+
+### Changed
+
+- Toolkit reload/unavailability settles modal ownership and removes stale pointer bindings. Late backend results cannot affect a replacement session; closing does not cancel already-dispatched requests.
+- Successful automatic dismissal uses real time in both forms, including while the caller has paused scaled time.
+
+### Validation scope
+
+- This feature update was checked with focused Unity 6000.6.0f1 Editor tests and localhost mocks only. Existing 0.1.0 minimum-editor/player evidence is not new 0.2.0 validation. No minimum-editor matrix, full player gate, or live submission was run for this update.
+
 ## 0.1.0
 
 ### Added
